@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+// import '../services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -10,6 +11,21 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
+  // final AuthService _authService = AuthService();
+
+  // void login() async {
+  //   try {
+  //     await _authService.signIn(
+  //       emailController.text.trim(),
+  //       passwordController.text.trim(),
+  //     );
+  //     Navigator.pushReplacementNamed(context, '/home');
+  //   } catch (e) {
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(content: Text('Login failed: $e')),
+  //     );
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -37,13 +53,7 @@ class _LoginScreenState extends State<LoginScreen> {
               obscureText: true,
             ),
             const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {
-                // here you will add Firebase sign-in code later
-                Navigator.pushReplacementNamed(context, '/home');
-              },
-              child: const Text('Login'),
-            ),
+            // ElevatedButton(onPressed: login, child: const Text('Login')),
             TextButton(
               onPressed: () {
                 Navigator.pushNamed(context, '/signup');

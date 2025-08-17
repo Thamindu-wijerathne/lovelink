@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+// import '../services/auth_service.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -10,6 +11,21 @@ class SignupScreen extends StatefulWidget {
 class _SignupScreenState extends State<SignupScreen> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
+  // final AuthService _authService = AuthService();
+
+  // void signup() async {
+  //   try {
+  //     await _authService.signUp(
+  //       emailController.text.trim(),
+  //       passwordController.text.trim(),
+  //     );
+  //     Navigator.pushReplacementNamed(context, '/home');
+  //   } catch (e) {
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(content: Text('Signup failed: $e')),
+  //     );
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -37,13 +53,7 @@ class _SignupScreenState extends State<SignupScreen> {
               obscureText: true,
             ),
             const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {
-                // later: Firebase sign-up code
-                Navigator.pushReplacementNamed(context, '/home');
-              },
-              child: const Text('Create Account'),
-            ),
+            // ElevatedButton(onPressed: signup, child: const Text('Create Account')),
           ],
         ),
       ),
