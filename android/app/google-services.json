@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "861449749355",
-    "project_id": "lovelink-94300",
-    "storage_bucket": "lovelink-94300.firebasestorage.app"
+    "project_number": "44746466644",
+    "project_id": "lovelink-6de41",
+    "storage_bucket": "lovelink-6de41.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:861449749355:android:882bf7e6530a72014a822e",
+        "mobilesdk_app_id": "1:44746466644:android:68204f931d6e26e30d54c1",
         "android_client_info": {
           "package_name": "com.example.lovelink"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyBV7_YVJnPprt-YvH1ba70bGyDz-2qMqPE"
+          "current_key": "AIzaSyCCVYsZ4ixVVAYoqyEXme97jD_UcEXsLpc"
         }
       ],
       "services": {

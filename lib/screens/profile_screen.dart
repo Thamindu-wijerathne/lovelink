@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
+import '../services/auth_service.dart';
 
 class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({super.key});
+  ProfileScreen({super.key});
+
+  final AuthService _authService = AuthService();
 
   @override
   Widget build(BuildContext context) {
+    final user = _authService.getCurrentUser();
+
     return Scaffold(
       appBar: AppBar(title: const Text('Profile')),
       body: SingleChildScrollView(
@@ -27,8 +32,8 @@ class ProfileScreen extends StatelessWidget {
             const SizedBox(height: 8),
             
             // Email
-            const Text(
-              'john.doe@example.com',
+            Text(
+              user?.email ?? 'john.doe@example.com',
               style: TextStyle(fontSize: 16, color: Colors.grey),
             ),
             const SizedBox(height: 24),
@@ -47,8 +52,9 @@ class ProfileScreen extends StatelessWidget {
               child: ListTile(
                 leading: const Icon(Icons.logout),
                 title: const Text('Logout'),
-                onTap: () {
-                  // Handle logout
+                onTap: () async {
+                  await _authService.signOut();
+                  Navigator.pushReplacementNamed(context, '/login');
                 },
               ),
             ),

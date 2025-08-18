@@ -16,7 +16,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final List<Widget> _pages = [
     const ChatScreen(),
     const ScanScreen(),
-    const ProfileScreen(),
+    ProfileScreen(),
   ];
 
   @override
