@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+
 class ScanScreen extends StatefulWidget {
   const ScanScreen({super.key});
 

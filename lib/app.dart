@@ -4,7 +4,6 @@ import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/signup_screen.dart';
 
-import 'services/auth_service.dart';
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
