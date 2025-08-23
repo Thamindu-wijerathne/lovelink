@@ -1,0 +1,112 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+class ChatService {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  String getChatId(String email1, String email2) {
+    final sortedEmails = [email1, email2]..sort();
+    return sortedEmails.join('_');
+  }
+
+  //creating a conn
+  Future<void> createChatIfNotExists({
+    required String email1,
+    required String email2,
+    int validHours = 24, // chat expires after 24 hours
+  }) async {
+    final chatId = getChatId(email1, email2);
+    final docRef = _firestore.collection('chats').doc(chatId);
+
+    final doc = await docRef.get();
+    if (!doc.exists) {
+      await docRef.set({
+        'participants': [email1, email2],
+        'lastMessage': '',
+        'lastMessageAt': FieldValue.serverTimestamp(),
+        'validTill': Timestamp.fromDate(
+          DateTime.now().add(Duration(hours: validHours)),
+        ),
+      });
+    }
+  }
+
+  /// Sending
+  Future<void> sendMessage({
+    required String senderEmail,
+    required String receiverEmail,
+    required String text,
+    String type = 'text', // default text
+  }) async {
+    final chatId = getChatId(senderEmail, receiverEmail);
+
+    final messageData = {
+      'senderEmail': senderEmail,
+      'text': text,
+      'type': type,
+      'createdAt': FieldValue.serverTimestamp(),
+    };
+
+    final messageRef = _firestore
+        .collection('chats')
+        .doc(chatId)
+        .collection('messages');
+
+    await messageRef.add(messageData);
+
+    // Update last message details
+    await _firestore.collection('chats').doc(chatId).update({
+      'lastMessage': text,
+      'lastMessageAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  /// Streaming Received Messages
+  Stream<QuerySnapshot> getMessages({
+    required String email1,
+    required String email2,
+  }) {
+    final chatId = getChatId(email1, email2);
+    return _firestore
+        .collection('chats')
+        .doc(chatId)
+        .collection('messages')
+        .orderBy('createdAt', descending: false)
+        .snapshots();
+  }
+
+  /// Optional: delete chat (if expired)
+  Future<void> deleteChat(String email1, String email2) async {
+    final chatId = getChatId(email1, email2);
+    await _firestore.collection('chats').doc(chatId).delete();
+  }
+
+  /// Get chats for a specific user
+  Stream<List<Map<String, dynamic>>> getUserChats(String userEmail) {
+    return _firestore
+        .collection('chats')
+        .where('participants', arrayContains: userEmail)
+        .orderBy('lastMessageAt', descending: true)
+        .snapshots()
+        .map((snapshot) {
+          return snapshot.docs.map((doc) {
+            final participants = List<String>.from(doc['participants']);
+            final chatPartner = participants.firstWhere(
+              (email) => email != userEmail,
+              orElse: () => userEmail,
+            );
+            final lastMessage = doc['lastMessage'] ?? '';
+            final lastMessageTime =
+                doc['lastMessageAt'] != null
+                    ? (doc['lastMessageAt'] as Timestamp).toDate()
+                    : null;
+
+            return {
+              'chatId': doc.id,
+              'chatPartner': chatPartner,
+              'lastMessage': lastMessage,
+              'lastMessageTime': lastMessageTime,
+            };
+          }).toList();
+        });
+  }
+}

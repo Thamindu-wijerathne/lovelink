@@ -1,111 +1,109 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../services/message_service.dart';
+import '../utils/chatDetailScreen.dart';
 
-// Show list of Chats
 class ChatScreen extends StatelessWidget {
-  const ChatScreen({super.key});
+  ChatScreen({super.key});
+
+  final ChatService _messageService = ChatService();
 
   @override
   Widget build(BuildContext context) {
+    final String currentUserEmail = "prvnmadushan@gmail.com";
+    // ✅ Replace with FirebaseAuth.instance.currentUser!.email
+
     return Scaffold(
       appBar: AppBar(title: const Text('Chats')),
-      body: ListView(
-        children: [
-          chatItem(context, 'Alice', 'Hey, how are you?', '10:30 AM'),
-          chatItem(context, 'Bob', 'See you soon!', '9:45 AM'),
-          chatItem(context, 'Charlie', 'Thanks for that!', 'Yesterday'),
-        ],
+
+      body: StreamBuilder<List<Map<String, dynamic>>>(
+        stream: _messageService.getUserChats(currentUserEmail),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
+
+          final chats = snapshot.data ?? [];
+
+          if (chats.isEmpty) {
+            return const Center(child: Text('No chats yet'));
+          }
+
+          return ListView.builder(
+            itemCount: chats.length,
+            itemBuilder: (context, index) {
+              final chat = chats[index];
+              return chatItem(
+                context,
+                chat['chatPartner'] ?? "Unknown",
+                chat['lastMessage'] ?? "",
+                _formatTime(chat['lastMessageTime']),
+                chat['chatId'],
+                currentUserEmail, // ✅ pass down
+              );
+            },
+          );
+        },
       ),
     );
   }
 
-  Widget chatItem(BuildContext context, String name, String message, String time) {
+  /// ✅ Chat list item widget
+  Widget chatItem(
+    BuildContext context,
+    String name,
+    String message,
+    String time,
+    String chatId,
+    String currentUserEmail, // ✅ added
+  ) {
     return ListTile(
       leading: CircleAvatar(
-        child: Text(name[0]), // Initial as avatar
+        backgroundColor: Colors.blueAccent,
+        child: Text(
+          name.isNotEmpty ? name[0].toUpperCase() : "?",
+          style: const TextStyle(color: Colors.white),
+        ),
       ),
       title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
-      subtitle: Text(message),
-      trailing: Text(time, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+      subtitle: Text(
+        message,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(color: Colors.black54),
+      ),
+      trailing: Text(
+        time,
+        style: const TextStyle(color: Colors.grey, fontSize: 12),
+      ),
       onTap: () {
-        // Open individual chat
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => ChatDetailScreen(chatName: name),
+            builder:
+                (_) => ChatDetailScreen(
+                  userEmail: currentUserEmail,
+                  chatPartnerEmail: name, // ✅ pass correct partner email
+                ),
           ),
         );
       },
     );
   }
-}
 
-// Open chat 
-class ChatDetailScreen extends StatefulWidget {
-  final String chatName;
-  const ChatDetailScreen({super.key, required this.chatName});
-
-  @override
-  State<ChatDetailScreen> createState() => _ChatDetailScreenState();
-}
-
-class _ChatDetailScreenState extends State<ChatDetailScreen> {
-  final TextEditingController _controller = TextEditingController();
-  final List<String> messages = []; // just for UI demo
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(widget.chatName)),
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView.builder(
-              itemCount: messages.length,
-              itemBuilder: (context, index) {
-                return Container(
-                  alignment: index % 2 == 0 ? Alignment.centerRight : Alignment.centerLeft,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  child: Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: index % 2 == 0 ? Colors.blue : Colors.grey[300],
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      messages[index],
-                      style: TextStyle(color: index % 2 == 0 ? Colors.white : Colors.black),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-          const Divider(height: 1),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    decoration: const InputDecoration(hintText: 'Type a message'),
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.send),
-                  onPressed: () {
-                    if (_controller.text.trim().isEmpty) return;
-                    setState(() {
-                      messages.add(_controller.text.trim());
-                      _controller.clear();
-                    });
-                  },
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
+  /// ✅ Helper: format time
+  String _formatTime(DateTime? dateTime) {
+    if (dateTime == null) return "";
+    final now = DateTime.now();
+    if (now.difference(dateTime).inDays == 0) {
+      return "${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}";
+    } else if (now.difference(dateTime).inDays == 1) {
+      return "Yesterday";
+    } else {
+      return "${dateTime.day}/${dateTime.month}/${dateTime.year}";
+    }
   }
 }
