@@ -16,14 +16,14 @@ class _LoginScreenState extends State<LoginScreen> {
   void login() async {
     try {
       await _authService.signIn(
-        emailController.text.trim(),
+        emailController.text.trim().toLowerCase(),
         passwordController.text.trim(),
       );
       Navigator.pushReplacementNamed(context, '/home');
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Login failed: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Login failed: $e')));
     }
   }
 

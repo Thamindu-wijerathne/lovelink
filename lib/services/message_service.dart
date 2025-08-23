@@ -1,7 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+// import 'auth_service.dart';
 
 class ChatService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  // final AuthService _authService = AuthService();
 
   String getChatId(String email1, String email2) {
     final sortedEmails = [email1, email2]..sort();
@@ -108,5 +110,16 @@ class ChatService {
             };
           }).toList();
         });
+  }
+
+  //get chat details
+  Future<Map<String, dynamic>?> getChatDetails(
+    String email1,
+    String email2,
+  ) async {
+    final chatId = getChatId(email1, email2);
+    final doc = await _firestore.collection('chats').doc(chatId).get();
+
+    return doc.data();
   }
 }

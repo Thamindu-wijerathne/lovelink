@@ -21,24 +21,23 @@ class _SignupScreenState extends State<SignupScreen> {
   void signup() async {
     try {
       await _authService.signUpWithDetails(
-        email: emailController.text.trim(),
+        email: emailController.text.trim().toLowerCase(),
         password: passwordController.text.trim(),
         userModel: UserModel(
           uid: '',
           name: nameController.text,
-          email: emailController.text,
+          email: emailController.text.toLowerCase(),
           phone: phoneController.text,
           address: addressController.text,
           preferences: {'theme': 'light'},
         ),
       );
 
-
       Navigator.pushReplacementNamed(context, '/home');
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Signup failed: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Signup failed: $e')));
     }
   }
 
@@ -94,7 +93,9 @@ class _SignupScreenState extends State<SignupScreen> {
               ),
               const SizedBox(height: 20),
               ElevatedButton(
-                  onPressed: signup, child: const Text('Create Account')),
+                onPressed: signup,
+                child: const Text('Create Account'),
+              ),
             ],
           ),
         ),

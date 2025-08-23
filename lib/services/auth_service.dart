@@ -48,11 +48,13 @@ class AuthService {
       QuerySnapshot snapshot =
           await FirebaseFirestore.instance
               .collection('users')
-              .where('email', isEqualTo: email)
+              .where('email', isEqualTo: email.toLowerCase())
               .limit(1)
               .get();
+      // print('snapshot: ${snapshot.docs}');
 
       if (snapshot.docs.isNotEmpty) {
+        print(snapshot.docs.first['name']);
         return snapshot.docs.first['name'];
       }
     } catch (e) {
