@@ -140,12 +140,9 @@ class ChatService {
       return;
     }
 
-    final currentValidTill = docSnapshot['validTill']?.toDate() ?? DateTime.now();
-
-    final newValidTill = currentValidTill.add(Duration(days: extendDays));
     
     await chatRef.update({
-      'validTill': Timestamp.fromDate(newValidTill),
+      'requestExtend': extendDays,
     });
   }
 }
