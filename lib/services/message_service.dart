@@ -193,15 +193,18 @@ Future<Map<String, dynamic>?> getExtendRequest({
       'validTill': Timestamp.fromDate(newValidTill),
       'requestExtend' : 0
     });
-    
-
   }
 
     Future<void> rejectExtendRequest({
     required String senderEmail,
     required String receiverEmail,
   }) async {
-    
+    final chatId = getChatId(senderEmail, receiverEmail);
+    final chatRef = _firestore.collection('chats').doc(chatId);
+
+    await chatRef.update({
+      'requestExtend' : 0
+    });
   }
 }
 

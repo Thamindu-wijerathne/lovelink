@@ -238,6 +238,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     );
     setState(() {
       _extendDays = null;
+      _requestSender = null;     // clear sender
+
     });
   }
 
@@ -350,7 +352,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
               children: [
                 // NEW: show request banner
                 // NEW: show request banner only if sender is NOT current user
-                if (_extendDays != 0 && _requestSender != widget.userEmail)
+                if (_extendDays != null && _extendDays! > 0 && _requestSender != widget.userEmail)
                   Container(
                     color: Colors.yellow[100],
                     padding: const EdgeInsets.all(12),
