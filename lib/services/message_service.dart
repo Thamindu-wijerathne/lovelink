@@ -1,3 +1,5 @@
+import 'dart:ffi';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 // import 'auth_service.dart';
 
@@ -121,5 +123,29 @@ class ChatService {
     final doc = await _firestore.collection('chats').doc(chatId).get();
 
     return doc.data();
+  }
+
+  // Asking Extend Request
+  Future<void> sendExtendRequest({
+    required String senderEmail,
+    required String receiverEmail,
+    required int extendDays
+  }) async {
+    final chatId = getChatId(senderEmail, receiverEmail);
+    final chatRef = _firestore.collection('chats').doc(chatId);
+
+    final docSnapshot = await chatRef.get();
+    if (!docSnapshot.exists) {
+      print("Chat does not exits !");
+      return;
+    }
+
+    final currentValidTill = docSnapshot['validTill']?.toDate() ?? DateTime.now();
+
+    final newValidTill = currentValidTill.add(Duration(days: extendDays));
+    
+    await chatRef.update({
+      'validTill': Timestamp.fromDate(newValidTill),
+    });
   }
 }

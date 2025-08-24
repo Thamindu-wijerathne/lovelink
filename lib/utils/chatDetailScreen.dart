@@ -66,43 +66,10 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         final diff = validTill!.difference(DateTime.now());
         if (diff.isNegative) {
           t.cancel();
-          setState(() => remaining = Duration.zero);
           setState(() {
+            remaining = Duration.zero;
             isExpired = true;
           });
-        } else if (diff.inSeconds <= 10) {
-          t.cancel();
-          setState(() => remaining = Duration.zero);
-          setState(() {
-            isExpired = true;
-          });
-          // Optionally, show a dialog or notification that chat has expired
-          showDialog(
-            context: context,
-            builder:
-                (context) => AlertDialog(
-                  title: const Text('Chat Expired'),
-                  content: const Text(
-                    'This chat session has expired. Do you want to extend it?',
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () {
-                        Navigator.pop(context); // Close dialog
-                      },
-                      child: const Text('No'),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        Navigator.pop(context); // Close dialog
-                        // Handle "Yes" action: extend chat session
-                        // Add your logic here
-                      },
-                      child: const Text('Yes'),
-                    ),
-                  ],
-                ),
-          );
         } else {
           setState(() => remaining = diff);
         }
@@ -150,6 +117,82 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     }
   }
 
+  // Extend Chat Popup
+  void extendChat() {
+    int? selectedDays;
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setStateDialog) => AlertDialog(
+          title: const Text('Extend Chat Session'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Select extension duration:'),
+              const SizedBox(height: 10),
+              RadioListTile<int>(
+                title: const Text('1 Day'),
+                value: 1,
+                groupValue: selectedDays,
+                onChanged: (value) {
+                  setStateDialog(() {
+                    selectedDays = value;
+                  });
+                },
+              ),
+              RadioListTile<int>(
+                title: const Text('3 Days'),
+                value: 3,
+                groupValue: selectedDays,
+                onChanged: (value) {
+                  setStateDialog(() {
+                    selectedDays = value;
+                  });
+                },
+              ),
+              RadioListTile<int>(
+                title: const Text('7 Days'),
+                value: 7,
+                groupValue: selectedDays,
+                onChanged: (value) {
+                  setStateDialog(() {
+                    selectedDays = value;
+                  });
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (selectedDays != null) {
+                  _chatService.sendExtendRequest(
+                    senderEmail: widget.userEmail,
+                    receiverEmail: widget.chatPartnerEmail,
+                    extendDays: selectedDays!,
+                  );
+                  Navigator.pop(context);
+
+                  // Re-initialize timer after extension
+                  _initializeTimer();
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Please select a duration')),
+                  );
+                }
+              },
+              child: const Text('Confirm'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   String _formatTimestamp(Timestamp? ts) {
     if (ts == null) return '';
     final date = ts.toDate();
@@ -176,10 +219,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
               margin: const EdgeInsets.only(right: 12),
               decoration: BoxDecoration(
                 border: Border.all(
-                  color:
-                      remaining.inMinutes < 60
-                          ? Colors.red
-                          : remaining.inMinutes < 180
+                  color: remaining.inMinutes < 60
+                      ? Colors.red
+                      : remaining.inMinutes < 180
                           ? Colors.amber
                           : Colors.green,
                 ),
@@ -189,10 +231,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                 children: [
                   Icon(
                     Icons.access_time,
-                    color:
-                        remaining.inMinutes < 60
-                            ? Colors.red
-                            : remaining.inMinutes < 180
+                    color: remaining.inMinutes < 60
+                        ? Colors.red
+                        : remaining.inMinutes < 180
                             ? Colors.amber
                             : Colors.green,
                     size: 18,
@@ -203,10 +244,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                         ? 'Chat Expired'
                         : _formatDuration(remaining),
                     style: TextStyle(
-                      color:
-                          remaining.inMinutes < 60
-                              ? Colors.red
-                              : remaining.inMinutes < 180
+                      color: remaining.inMinutes < 60
+                          ? Colors.red
+                          : remaining.inMinutes < 180
                               ? Colors.amber
                               : Colors.green,
                       fontWeight: FontWeight.bold,
@@ -221,194 +261,181 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             icon: const Icon(Icons.more_vert),
             onSelected: (value) {
               if (value == 'Extend_Chat') {
-                print("Extend Chat ");
+                extendChat();
               } else if (value == 'Block') {
                 print("Block clicked");
               }
             },
-            itemBuilder:
-                (BuildContext context) => const [
-                  PopupMenuItem(
-                    value: 'Extend_Chat',
-                    child: Text("Extend Chat"),
-                  ),
-                  PopupMenuItem(value: 'Block', child: Text("Block")),
-                ],
+            itemBuilder: (BuildContext context) => const [
+              PopupMenuItem(
+                value: 'Extend_Chat',
+                child: Text("Extend Chat"),
+              ),
+              PopupMenuItem(value: 'Block', child: Text("Block")),
+            ],
           ),
         ],
       ),
-      body:
-          isExpired
-              ? Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.timer_off, size: 50, color: Colors.grey),
-                    const SizedBox(height: 30),
-
-                    const Text(
-                      'This chat session has expired.',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    ElevatedButton(
-                      onPressed: () {
-                        // Handle "Extend Chat" action
-                        print("Extend Chat clicked");
-                      },
-                      child: const Text('Extend Chat'),
-                    ),
-                  ],
-                ),
-              )
-              : Column(
+      body: isExpired
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Expanded(
-                    child: StreamBuilder<QuerySnapshot>(
-                      stream: _chatService.getMessages(
-                        email1: widget.userEmail,
-                        email2: widget.chatPartnerEmail,
-                      ),
-                      builder: (context, snapshot) {
-                        if (!snapshot.hasData) {
-                          return const Center(
-                            child: CircularProgressIndicator(),
-                          );
-                        }
-
-                        final messages =
-                            snapshot.data!.docs
-                                .map(
-                                  (doc) => doc.data() as Map<String, dynamic>,
-                                )
-                                .toList()
-                                .reversed
-                                .toList();
-
-                        // WidgetsBinding.instance.addPostFrameCallback(
-                        //   (_) => _scrollToBottom(),
-                        // );
-                        if (messages.length > _lastMessageCount) {
-                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                            _scrollToBottom();
-                          });
-                        }
-                        _lastMessageCount = messages.length;
-
-                        return ListView.builder(
-                          reverse: true,
-                          controller: _scrollController,
-                          itemCount: messages.length,
-                          itemBuilder: (context, index) {
-                            final msg = messages[index];
-                            final isMe = msg['senderEmail'] == widget.userEmail;
-
-                            return Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8.0,
-                                vertical: 4.0,
-                              ),
-                              child: Column(
-                                crossAxisAlignment:
-                                    isMe
-                                        ? CrossAxisAlignment.end
-                                        : CrossAxisAlignment.start,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(12),
-                                    decoration: BoxDecoration(
-                                      color:
-                                          isMe ? Colors.blue : Colors.grey[300],
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Text(
-                                      msg['text'] ?? '',
-                                      style: TextStyle(
-                                        color:
-                                            isMe ? Colors.white : Colors.black,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    _formatTimestamp(msg['createdAt']),
-                                    style: const TextStyle(
-                                      fontSize: 10,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                        );
-                      },
+                  const Icon(Icons.timer_off, size: 50, color: Colors.grey),
+                  const SizedBox(height: 30),
+                  const Text(
+                    'This chat session has expired.',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.all(0),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: const BorderRadius.all(
-                          Radius.circular(12),
-                        ),
-                        border: const Border(
-                          top: BorderSide(color: Colors.grey, width: 1.0),
-                        ),
+                  const SizedBox(height: 20),
+                  ElevatedButton(
+                    onPressed: extendChat,
+                    child: const Text('Extend Chat'),
+                  ),
+                ],
+              ),
+            )
+          : Column(
+              children: [
+                Expanded(
+                  child: StreamBuilder<QuerySnapshot>(
+                    stream: _chatService.getMessages(
+                      email1: widget.userEmail,
+                      email2: widget.chatPartnerEmail,
+                    ),
+                    builder: (context, snapshot) {
+                      if (!snapshot.hasData) {
+                        return const Center(
+                          child: CircularProgressIndicator(),
+                        );
+                      }
+
+                      final messages = snapshot.data!.docs
+                          .map((doc) => doc.data() as Map<String, dynamic>)
+                          .toList()
+                          .reversed
+                          .toList();
+
+                      if (messages.length > _lastMessageCount) {
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          _scrollToBottom();
+                        });
+                      }
+                      _lastMessageCount = messages.length;
+
+                      return ListView.builder(
+                        reverse: true,
+                        controller: _scrollController,
+                        itemCount: messages.length,
+                        itemBuilder: (context, index) {
+                          final msg = messages[index];
+                          final isMe = msg['senderEmail'] == widget.userEmail;
+
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8.0,
+                              vertical: 4.0,
+                            ),
+                            child: Column(
+                              crossAxisAlignment: isMe
+                                  ? CrossAxisAlignment.end
+                                  : CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color:
+                                        isMe ? Colors.blue : Colors.grey[300],
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    msg['text'] ?? '',
+                                    style: TextStyle(
+                                      color:
+                                          isMe ? Colors.white : Colors.black,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  _formatTimestamp(msg['createdAt']),
+                                  style: const TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(0),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: const BorderRadius.all(
+                        Radius.circular(12),
                       ),
-                      child: Row(
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.image),
-                            onPressed: () {},
-                          ),
-                          Expanded(
-                            child: Padding(
-                              padding: const EdgeInsets.all(4.0),
-                              child: TextField(
-                                controller: _controller,
-                                decoration: const InputDecoration(
-                                  hintText: 'Type a message ...',
-                                  enabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.all(
-                                      Radius.circular(12),
-                                    ),
-                                    borderSide: BorderSide(color: Colors.grey),
+                      border: const Border(
+                        top: BorderSide(color: Colors.grey, width: 1.0),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.image),
+                          onPressed: () {},
+                        ),
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.all(4.0),
+                            child: TextField(
+                              controller: _controller,
+                              decoration: const InputDecoration(
+                                hintText: 'Type a message ...',
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.all(
+                                    Radius.circular(12),
                                   ),
-                                  focusedBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.all(
-                                      Radius.circular(12),
-                                    ),
-                                    borderSide: BorderSide(color: Colors.blue),
+                                  borderSide: BorderSide(color: Colors.grey),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.all(
+                                    Radius.circular(12),
                                   ),
+                                  borderSide: BorderSide(color: Colors.blue),
                                 ),
                               ),
                             ),
                           ),
-                          IconButton(
-                            icon: Container(
-                              padding: const EdgeInsets.all(10.0),
-                              decoration: BoxDecoration(
-                                color: Colors.blue,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: const Icon(
-                                Icons.send,
-                                color: Colors.white,
-                              ),
+                        ),
+                        IconButton(
+                          icon: Container(
+                            padding: const EdgeInsets.all(10.0),
+                            decoration: BoxDecoration(
+                              color: Colors.blue,
+                              borderRadius: BorderRadius.circular(10),
                             ),
-                            onPressed: _sendMessage,
+                            child: const Icon(
+                              Icons.send,
+                              color: Colors.white,
+                            ),
                           ),
-                        ],
-                      ),
+                          onPressed: _sendMessage,
+                        ),
+                      ],
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
+            ),
     );
   }
 }
