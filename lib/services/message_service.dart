@@ -1,3 +1,5 @@
+import 'dart:ffi';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 // import 'auth_service.dart';
 
@@ -122,4 +124,102 @@ class ChatService {
 
     return doc.data();
   }
+
+  // Asking Extend Request
+  Future<void> sendExtendRequest({
+    required String senderEmail,
+    required String receiverEmail,
+    required int extendDays
+  }) async {
+    final chatId = getChatId(senderEmail, receiverEmail);
+    final chatRef = _firestore.collection('chats').doc(chatId);
+
+    final docSnapshot = await chatRef.get();
+    if (!docSnapshot.exists) {
+      print("Chat does not exits !");
+      return;
+    }
+
+    await chatRef.update({
+      'requestExtend': extendDays,
+      'requestSender': senderEmail
+    });
+  }
+
+Future<Map<String, dynamic>?> getExtendRequest({
+  required String senderEmail,
+  required String receiverEmail,
+}) async {
+  final chatId = getChatId(senderEmail, receiverEmail);
+  final chatRef = _firestore.collection('chats').doc(chatId);
+
+  final docSnapshot = await chatRef.get();
+
+  if (!docSnapshot.exists) {
+    print("Chat does not exist!");
+    return null;
+  }
+
+  final data = docSnapshot.data();
+  return {
+    "requestDays": data?['requestExtend'] as int?,
+    "requestSender": data?['requestSender'] as String?,
+  };
 }
+
+
+
+  Future<void> acceptExtendRequest({
+    required String senderEmail,
+    required String receiverEmail,
+  }) async {
+    final chatId = getChatId(senderEmail, receiverEmail);
+    final chatRef = _firestore.collection('chats').doc(chatId);
+
+    final docSnapshot = await chatRef.get();
+
+    if (!docSnapshot.exists) {
+      print("Chat does not exist!");
+      return null;
+    }
+
+    final requestExtend = docSnapshot["requestExtend"] as int;
+
+    final currentValidTill = docSnapshot['validTill']?.toDate() ?? DateTime.now();
+
+    final newValidTill = currentValidTill.add(Duration(days: requestExtend));
+
+    await chatRef.update({
+      'validTill': Timestamp.fromDate(newValidTill),
+      'requestExtend' : 0
+    });
+  }
+
+    Future<void> rejectExtendRequest({
+    required String senderEmail,
+    required String receiverEmail,
+  }) async {
+    final chatId = getChatId(senderEmail, receiverEmail);
+    final chatRef = _firestore.collection('chats').doc(chatId);
+
+    await chatRef.update({
+      'requestExtend' : 0
+    });
+  }
+}
+
+
+
+
+
+
+    // final currentValidTill = docSnapshot['validTill']?.toDate() ?? DateTime.now();
+
+    // final newValidTill = currentValidTill.add(Duration(days: extendDays));
+    
+    // await chatRef.update({
+    //   'validTill': Timestamp.fromDate(newValidTill),
+    //   'lastExtendedBy' : senderEmail,
+    //   'lastExtendedAt' : FieldValue.serverTimestamp(),
+    // });
+    //   print("Chat extended by $extendDays days. New expiry: $newValidTill");
