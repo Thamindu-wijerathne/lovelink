@@ -350,15 +350,15 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
               children: [
                 // NEW: show request banner
                 // NEW: show request banner only if sender is NOT current user
-                if (_extendDays != null && _requestSender != widget.userEmail)
+                if (_extendDays != 0 && _requestSender != widget.userEmail)
                   Container(
                     color: Colors.yellow[100],
                     padding: const EdgeInsets.all(12),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        // Text("Request to extend $_extendDays days"),
-                        Text(_requestSender ?? "unkown"),
+                        Text("Request to extend $_extendDays days"),
+                        // Text(_requestSender ?? "unkown"),
                         Row(
                           children: [
                             TextButton(

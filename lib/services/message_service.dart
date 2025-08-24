@@ -173,6 +173,27 @@ Future<Map<String, dynamic>?> getExtendRequest({
     required String senderEmail,
     required String receiverEmail,
   }) async {
+    final chatId = getChatId(senderEmail, receiverEmail);
+    final chatRef = _firestore.collection('chats').doc(chatId);
+
+    final docSnapshot = await chatRef.get();
+
+    if (!docSnapshot.exists) {
+      print("Chat does not exist!");
+      return null;
+    }
+
+    final requestExtend = docSnapshot["requestExtend"] as int;
+
+    final currentValidTill = docSnapshot['validTill']?.toDate() ?? DateTime.now();
+
+    final newValidTill = currentValidTill.add(Duration(days: requestExtend));
+
+    await chatRef.update({
+      'validTill': Timestamp.fromDate(newValidTill),
+      'requestExtend' : 0
+    });
+    
 
   }
 
@@ -183,3 +204,19 @@ Future<Map<String, dynamic>?> getExtendRequest({
     
   }
 }
+
+
+
+
+
+
+    // final currentValidTill = docSnapshot['validTill']?.toDate() ?? DateTime.now();
+
+    // final newValidTill = currentValidTill.add(Duration(days: extendDays));
+    
+    // await chatRef.update({
+    //   'validTill': Timestamp.fromDate(newValidTill),
+    //   'lastExtendedBy' : senderEmail,
+    //   'lastExtendedAt' : FieldValue.serverTimestamp(),
+    // });
+    //   print("Chat extended by $extendDays days. New expiry: $newValidTill");
