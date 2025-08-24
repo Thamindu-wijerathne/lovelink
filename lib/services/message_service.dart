@@ -140,9 +140,46 @@ class ChatService {
       return;
     }
 
-    
     await chatRef.update({
       'requestExtend': extendDays,
+      'requestSender': senderEmail
     });
+  }
+
+Future<Map<String, dynamic>?> getExtendRequest({
+  required String senderEmail,
+  required String receiverEmail,
+}) async {
+  final chatId = getChatId(senderEmail, receiverEmail);
+  final chatRef = _firestore.collection('chats').doc(chatId);
+
+  final docSnapshot = await chatRef.get();
+
+  if (!docSnapshot.exists) {
+    print("Chat does not exist!");
+    return null;
+  }
+
+  final data = docSnapshot.data();
+  return {
+    "requestDays": data?['requestExtend'] as int?,
+    "requestSender": data?['requestSender'] as String?,
+  };
+}
+
+
+
+  Future<void> acceptExtendRequest({
+    required String senderEmail,
+    required String receiverEmail,
+  }) async {
+
+  }
+
+    Future<void> rejectExtendRequest({
+    required String senderEmail,
+    required String receiverEmail,
+  }) async {
+    
   }
 }

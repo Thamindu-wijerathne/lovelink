@@ -32,6 +32,10 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   final AuthService _authService = AuthService();
   int _lastMessageCount = 0;
 
+  int? _extendDays; // NEW: store request days
+  String? _requestSender;
+
+
   @override
   void initState() {
     super.initState();
@@ -48,6 +52,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
     // Initialize countdown timer
     _initializeTimer();
+
+    // Load Extend Requests
+    loadExtendRequest(); // NEW
   }
 
   Future<void> _initializeTimer() async {
@@ -73,6 +80,25 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         } else {
           setState(() => remaining = diff);
         }
+      });
+    }
+  }
+
+  // NEW: load extension request
+  Future<void> loadExtendRequest() async {
+    final request = await _chatService.getExtendRequest(
+      senderEmail: widget.userEmail,
+      receiverEmail: widget.chatPartnerEmail,
+    );
+    if (request != null) {
+      setState(() {
+        _extendDays = request['requestDays'] ?? 0;
+        _requestSender = request['requestSender'];
+      });
+    } else {
+      setState(() {
+        _extendDays = 0;
+        _requestSender = null;
       });
     }
   }
@@ -177,8 +203,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                   );
                   Navigator.pop(context);
 
-                  // Re-initialize timer after extension
-                  _initializeTimer();
+                  // reload request banner
+                  loadExtendRequest(); // NEW
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Please select a duration')),
@@ -191,6 +217,28 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         ),
       ),
     );
+  }
+
+  // NEW: Accept / Reject
+  Future<void> acceptRequest() async {
+    await _chatService.acceptExtendRequest(
+      senderEmail: widget.userEmail,
+      receiverEmail: widget.chatPartnerEmail,
+    );
+    setState(() {
+      _extendDays = null;
+    });
+    _initializeTimer(); // refresh countdown
+  }
+
+  Future<void> rejectRequest() async {
+    await _chatService.rejectExtendRequest(
+      senderEmail: widget.userEmail,
+      receiverEmail: widget.chatPartnerEmail,
+    );
+    setState(() {
+      _extendDays = null;
+    });
   }
 
   String _formatTimestamp(Timestamp? ts) {
@@ -300,6 +348,33 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             )
           : Column(
               children: [
+                // NEW: show request banner
+                // NEW: show request banner only if sender is NOT current user
+                if (_extendDays != null && _requestSender != widget.userEmail)
+                  Container(
+                    color: Colors.yellow[100],
+                    padding: const EdgeInsets.all(12),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        // Text("Request to extend $_extendDays days"),
+                        Text(_requestSender ?? "unkown"),
+                        Row(
+                          children: [
+                            TextButton(
+                              onPressed: acceptRequest,
+                              child: const Text("Accept"),
+                            ),
+                            TextButton(
+                              onPressed: rejectRequest,
+                              child: const Text("Reject"),
+                            ),
+                          ],
+                        )
+                      ],
+                    ),
+                  ),
+
                 Expanded(
                   child: StreamBuilder<QuerySnapshot>(
                     stream: _chatService.getMessages(
