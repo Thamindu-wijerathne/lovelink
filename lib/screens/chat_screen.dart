@@ -42,7 +42,9 @@ class _ChatScreenState extends State<ChatScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Chats'),
+        title: Image.asset('assets/images/logo_trans.png', height: 80),
+        toolbarHeight: 70,
+        automaticallyImplyLeading: false,
         actions: [
           IconButton(
             icon: const Icon(Icons.search),

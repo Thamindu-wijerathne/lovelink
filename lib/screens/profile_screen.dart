@@ -21,7 +21,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     'Music',
     'Traveling',
     'Cooking',
-    'Gaming'
+    'Gaming',
   ];
 
   List<String> selectedPreferences = [];
@@ -39,8 +39,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     Map<String, dynamic>? data;
     if (user != null) {
       final doc =
-          await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-      data = doc.exists ? doc.data() : {'name': 'New User', 'email': user.email};
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .get();
+      data =
+          doc.exists ? doc.data() : {'name': 'New User', 'email': user.email};
     }
 
     // Load preferences from SQLite
@@ -74,33 +78,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   return Wrap(
                     spacing: 8,
                     runSpacing: 8,
-                    children: preferencePool.map((preference) {
-                      final isSelected = tempSelected.contains(preference);
-                      return GestureDetector(
-                        onTap: () {
-                          setStateDialog(() {
-                            if (isSelected) {
-                              tempSelected.remove(preference);
-                            } else {
-                              tempSelected.add(preference);
-                            }
-                          });
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: isSelected ? Colors.blue : Colors.grey[300],
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            preference,
-                            style: TextStyle(
-                                color: isSelected ? Colors.white : Colors.black),
-                          ),
-                        ),
-                      );
-                    }).toList(),
+                    children:
+                        preferencePool.map((preference) {
+                          final isSelected = tempSelected.contains(preference);
+                          return GestureDetector(
+                            onTap: () {
+                              setStateDialog(() {
+                                if (isSelected) {
+                                  tempSelected.remove(preference);
+                                } else {
+                                  tempSelected.add(preference);
+                                }
+                              });
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color:
+                                    isSelected ? Colors.blue : Colors.grey[300],
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                preference,
+                                style: TextStyle(
+                                  color:
+                                      isSelected ? Colors.white : Colors.black,
+                                ),
+                              ),
+                            ),
+                          );
+                        }).toList(),
                   );
                 },
               ),
@@ -108,17 +118,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           actions: [
             TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel')),
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
             ElevatedButton(
-                onPressed: () {
-                  setState(() {
-                    selectedPreferences = tempSelected;
-                  });
-                  savePreferences();
-                  Navigator.pop(context);
-                },
-                child: const Text('Save')),
+              onPressed: () {
+                setState(() {
+                  selectedPreferences = tempSelected;
+                });
+                savePreferences();
+                Navigator.pop(context);
+              },
+              child: const Text('Save'),
+            ),
           ],
         );
       },
@@ -130,51 +142,60 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final user = _authService.getCurrentUser();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Profile')),
-      body: userData == null
-          ? const Center(child: CircularProgressIndicator())
-          : Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  CircleAvatar(
-                    radius: 50,
-                    backgroundImage: NetworkImage(
-                        'https://www.w3schools.com/howto/img_avatar.png'),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(userData!['name'] ?? 'John Doe',
-                      style: const TextStyle(fontSize: 20)),
-                  const SizedBox(height: 8),
-                  Text(userData!['email'] ?? user?.email ?? ''),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('Preferences:'),
-                      TextButton(
-                        onPressed: showPreferencesPopup,
-                        child: const Text('Select'),
+      appBar: AppBar(
+        title: Image.asset('assets/images/logo_trans.png', height: 80),
+        toolbarHeight: 70,
+        automaticallyImplyLeading: false,
+      ),
+      body:
+          userData == null
+              ? const Center(child: CircularProgressIndicator())
+              : Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    CircleAvatar(
+                      radius: 50,
+                      backgroundImage: NetworkImage(
+                        'https://www.w3schools.com/howto/img_avatar.png',
                       ),
-                    ],
-                  ),
-                  Wrap(
-                    spacing: 8,
-                    children: selectedPreferences
-                        .map((pref) => Chip(label: Text(pref)))
-                        .toList(),
-                  ),
-                  const Spacer(),
-                  ElevatedButton(
-                    onPressed: () async {
-                      await _authService.signOut();
-                      Navigator.pushReplacementNamed(context, '/login');
-                    },
-                    child: const Text('Logout'),
-                  ),
-                ],
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      userData!['name'] ?? 'John Doe',
+                      style: const TextStyle(fontSize: 20),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(userData!['email'] ?? user?.email ?? ''),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Preferences:'),
+                        TextButton(
+                          onPressed: showPreferencesPopup,
+                          child: const Text('Select'),
+                        ),
+                      ],
+                    ),
+                    Wrap(
+                      spacing: 8,
+                      children:
+                          selectedPreferences
+                              .map((pref) => Chip(label: Text(pref)))
+                              .toList(),
+                    ),
+                    const Spacer(),
+                    ElevatedButton(
+                      onPressed: () async {
+                        await _authService.signOut();
+                        Navigator.pushReplacementNamed(context, '/login');
+                      },
+                      child: const Text('Logout'),
+                    ),
+                  ],
+                ),
               ),
-            ),
     );
   }
 }

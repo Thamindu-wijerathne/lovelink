@@ -68,7 +68,11 @@ class _ScanScreenState extends State<ScanScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Scan / Show QR')),
+      appBar: AppBar(
+        title: Image.asset('assets/images/logo_trans.png', height: 80),
+        toolbarHeight: 70,
+        automaticallyImplyLeading: false,
+      ),
       body: Column(
         children: [
           Expanded(
