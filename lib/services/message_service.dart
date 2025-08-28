@@ -1,15 +1,19 @@
 import 'dart:ffi';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-// import 'auth_service.dart';
+import 'auth_service.dart';
 
 class ChatService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  // final AuthService _authService = AuthService();
+  final AuthService _authService = AuthService();
 
   String getChatId(String email1, String email2) {
     final sortedEmails = [email1, email2]..sort();
     return sortedEmails.join('_');
+  }
+
+  String sanitizeEmailForKey(String email) {
+    return email.replaceAll('.', '_');
   }
 
   //creating a conn
@@ -34,7 +38,6 @@ class ChatService {
     }
   }
 
-  /// Sending
   Future<void> sendMessage({
     required String senderEmail,
     required String receiverEmail,
@@ -43,6 +46,7 @@ class ChatService {
   }) async {
     final chatId = getChatId(senderEmail, receiverEmail);
 
+    // Message data
     final messageData = {
       'senderEmail': senderEmail,
       'text': text,
@@ -50,18 +54,51 @@ class ChatService {
       'createdAt': FieldValue.serverTimestamp(),
     };
 
-    final messageRef = _firestore
+    // References
+    final messagesRef = _firestore
         .collection('chats')
         .doc(chatId)
         .collection('messages');
 
-    await messageRef.add(messageData);
+    final chatRef = _firestore.collection('chats').doc(chatId);
 
-    // Update last message details
-    await _firestore.collection('chats').doc(chatId).update({
+    // Add the message
+    await messagesRef.add(messageData);
+
+    // Update last message info
+    await chatRef.update({
       'lastMessage': text,
       'lastMessageAt': FieldValue.serverTimestamp(),
+      'lastMessageBy': senderEmail,
     });
+
+    // --- Unread count handling ---
+    final receiverId = await _authService.getUserIdByEmail(receiverEmail);
+
+    if (receiverId != null) {
+      final receiverDocRef = _firestore.collection('users').doc(receiverId);
+      final receiverSnapshot = await receiverDocRef.get();
+
+      if (receiverSnapshot.exists) {
+        final receiverData = receiverSnapshot.data()!;
+        final activeChat = receiverData['activeChat'] as String?;
+
+        // Check if receiver is in this chat
+        if (activeChat != chatId) {
+          // Not active → increment unread count
+          final receiverKey = sanitizeEmailForKey(receiverEmail);
+
+          // Get current unread count
+          final chatSnapshot = await chatRef.get();
+          int currentUnread = 0;
+          if (chatSnapshot.exists && chatSnapshot.data() != null) {
+            final data = chatSnapshot.data()!;
+            currentUnread = (data['unreadCount']?[receiverKey] ?? 0) as int;
+          }
+          await chatRef.update({'unreadCount.$receiverKey': currentUnread + 1});
+        }
+      }
+    }
   }
 
   /// Streaming Received Messages
@@ -93,22 +130,34 @@ class ChatService {
         .snapshots()
         .map((snapshot) {
           return snapshot.docs.map((doc) {
-            final participants = List<String>.from(doc['participants']);
+            final data = doc.data() as Map<String, dynamic>;
+
+            final participants = List<String>.from(data['participants']);
             final chatPartner = participants.firstWhere(
               (email) => email != userEmail,
               orElse: () => userEmail,
             );
-            final lastMessage = doc['lastMessage'] ?? '';
+
+            final lastMessage = data['lastMessage'] ?? '';
+            final lastMessageBy = data['lastMessageBy'] ?? '';
             final lastMessageTime =
-                doc['lastMessageAt'] != null
-                    ? (doc['lastMessageAt'] as Timestamp).toDate()
+                data['lastMessageAt'] != null
+                    ? (data['lastMessageAt'] as Timestamp).toDate()
                     : null;
+
+            // Safely get unreadCount
+            final unreadCount =
+                data.containsKey('unreadCount') && data['unreadCount'] != null
+                    ? Map<String, dynamic>.from(data['unreadCount'])
+                    : <String, dynamic>{};
 
             return {
               'chatId': doc.id,
               'chatPartner': chatPartner,
               'lastMessage': lastMessage,
+              'lastMessageBy': lastMessageBy,
               'lastMessageTime': lastMessageTime,
+              'unreadCount': unreadCount,
             };
           }).toList();
         });
@@ -129,7 +178,7 @@ class ChatService {
   Future<void> sendExtendRequest({
     required String senderEmail,
     required String receiverEmail,
-    required int extendDays
+    required int extendDays,
   }) async {
     final chatId = getChatId(senderEmail, receiverEmail);
     final chatRef = _firestore.collection('chats').doc(chatId);
@@ -142,32 +191,42 @@ class ChatService {
 
     await chatRef.update({
       'requestExtend': extendDays,
-      'requestSender': senderEmail
+      'requestSender': senderEmail,
     });
   }
 
-Future<Map<String, dynamic>?> getExtendRequest({
-  required String senderEmail,
-  required String receiverEmail,
-}) async {
-  final chatId = getChatId(senderEmail, receiverEmail);
-  final chatRef = _firestore.collection('chats').doc(chatId);
+  Future<Map<String, dynamic>?> getExtendRequest({
+    required String senderEmail,
+    required String receiverEmail,
+  }) async {
+    final chatId = getChatId(senderEmail, receiverEmail);
+    final chatRef = _firestore.collection('chats').doc(chatId);
 
-  final docSnapshot = await chatRef.get();
+    final docSnapshot = await chatRef.get();
 
-  if (!docSnapshot.exists) {
-    print("Chat does not exist!");
-    return null;
+    if (!docSnapshot.exists) {
+      print("Chat does not exist!");
+      return null;
+    }
+
+    final data = docSnapshot.data();
+    return {
+      "requestDays": data?['requestExtend'] as int?,
+      "requestSender": data?['requestSender'] as String?,
+    };
   }
 
-  final data = docSnapshot.data();
-  return {
-    "requestDays": data?['requestExtend'] as int?,
-    "requestSender": data?['requestSender'] as String?,
-  };
-}
+  Future<void> resetUnreadCount({
+    required String userEmail,
+    required String chatPartnerEmail,
+  }) async {
+    final chatId = getChatId(userEmail, chatPartnerEmail);
+    final sanitizedEmail = sanitizeEmailForKey(userEmail);
 
-
+    await _firestore.collection('chats').doc(chatId).update({
+      'unreadCount.$sanitizedEmail': 0,
+    });
+  }
 
   Future<void> acceptExtendRequest({
     required String senderEmail,
@@ -185,26 +244,25 @@ Future<Map<String, dynamic>?> getExtendRequest({
 
     final requestExtend = docSnapshot["requestExtend"] as int;
 
-    final currentValidTill = docSnapshot['validTill']?.toDate() ?? DateTime.now();
+    final currentValidTill =
+        docSnapshot['validTill']?.toDate() ?? DateTime.now();
 
     final newValidTill = currentValidTill.add(Duration(days: requestExtend));
 
     await chatRef.update({
       'validTill': Timestamp.fromDate(newValidTill),
-      'requestExtend' : 0
+      'requestExtend': 0,
     });
   }
 
-    Future<void> rejectExtendRequest({
+  Future<void> rejectExtendRequest({
     required String senderEmail,
     required String receiverEmail,
   }) async {
     final chatId = getChatId(senderEmail, receiverEmail);
     final chatRef = _firestore.collection('chats').doc(chatId);
 
-    await chatRef.update({
-      'requestExtend' : 0
-    });
+    await chatRef.update({'requestExtend': 0});
   }
 }
 

@@ -41,22 +41,14 @@ class _ChatScreenState extends State<ChatScreen> {
     final String currentUserEmail = myMail;
 
     return Scaffold(
+      backgroundColor: const Color.fromARGB(255, 255, 252, 248),
       appBar: AppBar(
-        title: const Text('Chats'),
+        title: Image.asset('assets/images/logo_trans.png', height: 80),
+        toolbarHeight: 70,
+        automaticallyImplyLeading: false,
+        backgroundColor: Colors.white,
+        elevation: 1,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () {
-              // Handle search action
-            },
-          ),
-          IconButton(
-            icon: RequestIcon(requestCount: 1),
-
-            onPressed: () {
-              // Handle more options action
-            },
-          ),
           IconButton(onPressed: () {}, icon: const Icon(Icons.more_vert)),
         ],
       ),
@@ -72,6 +64,7 @@ class _ChatScreenState extends State<ChatScreen> {
           }
 
           final chats = snapshot.data ?? [];
+          print(chats);
 
           if (chats.isEmpty) {
             return const Center(child: Text('No chats yet'));
@@ -79,8 +72,14 @@ class _ChatScreenState extends State<ChatScreen> {
 
           return ListView.builder(
             itemCount: chats.length,
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
             itemBuilder: (context, index) {
               final chat = chats[index];
+              final unreadName = _messageService.sanitizeEmailForKey(
+                currentUserEmail,
+              );
+              // print('Unread Name: $unreadName');
+              // print(chat['unreadCount']);
               return chatItem(
                 context,
                 chat['chatPartner'] ?? "Unknown",
@@ -88,6 +87,11 @@ class _ChatScreenState extends State<ChatScreen> {
                 _formatTime(chat['lastMessageTime']),
                 chat['chatId'],
                 currentUserEmail,
+                chat['unreadCount'] != null &&
+                        chat['unreadCount'][unreadName] != null
+                    ? chat['unreadCount'][unreadName]
+                    : 0,
+                chat['lastMessageBy'] ?? "",
               );
             },
           );
@@ -103,6 +107,8 @@ class _ChatScreenState extends State<ChatScreen> {
     String time,
     String chatId,
     String currentUserEmail,
+    int unreadCount,
+    String lastMessageBy,
   ) {
     final List<Color> chatAvatarColors = [
       Colors.blueAccent,
@@ -116,21 +122,22 @@ class _ChatScreenState extends State<ChatScreen> {
       Colors.indigoAccent,
       Colors.cyanAccent,
     ];
-    return Container(
-      margin: EdgeInsets.symmetric(vertical: 2, horizontal: 5),
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: Colors.grey.shade300, width: 1),
-        ),
-      ),
-
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+      elevation: 0.5,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       child: ListTile(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         leading: CircleAvatar(
           backgroundColor:
               chatAvatarColors[random.nextInt(chatAvatarColors.length)],
           child: Text(
             name.isNotEmpty ? name[0].toUpperCase() : "?",
-            style: const TextStyle(color: Colors.white),
+
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
         title: FutureBuilder<String>(
@@ -149,14 +156,43 @@ class _ChatScreenState extends State<ChatScreen> {
           },
         ),
         subtitle: Text(
-          message,
+          lastMessageBy == currentUserEmail ? "You: $message" : message,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(color: Colors.black54),
+          style: TextStyle(
+            color: Colors.black54,
+            fontWeight: unreadCount > 0 ? FontWeight.bold : FontWeight.normal,
+          ),
         ),
-        trailing: Text(
-          time,
-          style: const TextStyle(color: Colors.grey, fontSize: 12),
+        trailing: Column(
+          children: [
+            Text(
+              time,
+              style: TextStyle(
+                color: unreadCount > 0 ? Colors.orange : Colors.grey,
+                fontSize: 12,
+              ),
+            ),
+            if (unreadCount > 0)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.orange,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                margin: const EdgeInsets.only(top: 6),
+                child: Text(
+                  unreadCount.toString(),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              )
+            else
+              const SizedBox(height: 16), // Placeholder for alignment
+          ],
         ),
         onTap: () {
           Navigator.push(
@@ -197,7 +233,7 @@ class RequestIcon extends StatelessWidget {
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        Icon(requestCount > 0 ? Icons.upcoming : Icons.upcoming_rounded),
+        const Icon(Icons.upcoming),
         if (requestCount > 0)
           Positioned(
             right: -4,

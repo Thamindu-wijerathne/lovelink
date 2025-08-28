@@ -28,20 +28,29 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
-        selectedItemColor: Colors.blue,
+        backgroundColor: const Color.fromARGB(255, 243, 243, 243),
+        elevation: 200,
+        selectedItemColor: Colors.orange,
         unselectedItemColor: Colors.grey,
+
         onTap: (index) {
           setState(() {
             _currentIndex = index;
           });
         },
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.chat), label: 'Chat'),
           BottomNavigationBarItem(
-            icon: Icon(Icons.qr_code_scanner),
+            icon: Icon(Icons.chat, size: 35),
+            label: 'Chat',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.qr_code_scanner, size: 35),
             label: 'Scan',
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person, size: 35),
+            label: 'Profile',
+          ),
         ],
       ),
     );

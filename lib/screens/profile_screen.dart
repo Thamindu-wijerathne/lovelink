@@ -21,7 +21,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     'Music',
     'Traveling',
     'Cooking',
-    'Gaming'
+    'Gaming',
   ];
 
   List<String> selectedPreferences = [];
@@ -39,8 +39,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     Map<String, dynamic>? data;
     if (user != null) {
       final doc =
-          await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-      data = doc.exists ? doc.data() : {'name': 'New User', 'email': user.email};
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .get();
+      data =
+          doc.exists ? doc.data() : {'name': 'New User', 'email': user.email};
     }
 
     // Load preferences from SQLite
@@ -52,12 +56,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
   }
 
-  // Save preferences to SQLite
   Future<void> savePreferences() async {
     await DBHelper.savePreferences(selectedPreferences);
   }
 
-  // Show popup for preference selection
   void showPreferencesPopup() {
     showDialog(
       context: context,
@@ -74,33 +76,44 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   return Wrap(
                     spacing: 8,
                     runSpacing: 8,
-                    children: preferencePool.map((preference) {
-                      final isSelected = tempSelected.contains(preference);
-                      return GestureDetector(
-                        onTap: () {
-                          setStateDialog(() {
-                            if (isSelected) {
-                              tempSelected.remove(preference);
-                            } else {
-                              tempSelected.add(preference);
-                            }
-                          });
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: isSelected ? Colors.blue : Colors.grey[300],
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            preference,
-                            style: TextStyle(
-                                color: isSelected ? Colors.white : Colors.black),
-                          ),
-                        ),
-                      );
-                    }).toList(),
+                    children:
+                        preferencePool.map((preference) {
+                          final isSelected = tempSelected.contains(preference);
+                          return GestureDetector(
+                            onTap: () {
+                              setStateDialog(() {
+                                if (isSelected) {
+                                  tempSelected.remove(preference);
+                                } else {
+                                  tempSelected.add(preference);
+                                }
+                              });
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 10,
+                              ),
+                              decoration: BoxDecoration(
+                                color:
+                                    isSelected
+                                        ? Colors.orange
+                                        : Colors.grey[200],
+                                borderRadius: BorderRadius.circular(25),
+                              ),
+                              child: Text(
+                                preference,
+                                style: TextStyle(
+                                  color:
+                                      isSelected
+                                          ? Colors.white
+                                          : Colors.black87,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          );
+                        }).toList(),
                   );
                 },
               ),
@@ -108,17 +121,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           actions: [
             TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel')),
+              onPressed: () => Navigator.pop(context),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(color: Color.fromARGB(255, 0, 0, 0)),
+              ),
+            ),
             ElevatedButton(
-                onPressed: () {
-                  setState(() {
-                    selectedPreferences = tempSelected;
-                  });
-                  savePreferences();
-                  Navigator.pop(context);
-                },
-                child: const Text('Save')),
+              onPressed: () {
+                setState(() {
+                  selectedPreferences = tempSelected;
+                });
+                savePreferences();
+                Navigator.pop(context);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text('Save', style: TextStyle(color: Colors.white)),
+            ),
           ],
         );
       },
@@ -130,51 +154,121 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final user = _authService.getCurrentUser();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Profile')),
-      body: userData == null
-          ? const Center(child: CircularProgressIndicator())
-          : Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  CircleAvatar(
-                    radius: 50,
-                    backgroundImage: NetworkImage(
-                        'https://www.w3schools.com/howto/img_avatar.png'),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(userData!['name'] ?? 'John Doe',
-                      style: const TextStyle(fontSize: 20)),
-                  const SizedBox(height: 8),
-                  Text(userData!['email'] ?? user?.email ?? ''),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('Preferences:'),
-                      TextButton(
-                        onPressed: showPreferencesPopup,
-                        child: const Text('Select'),
+      backgroundColor: const Color.fromARGB(255, 255, 252, 248),
+      appBar: AppBar(
+        title: Image.asset('assets/images/logo_trans.png', height: 80),
+        toolbarHeight: 70,
+        automaticallyImplyLeading: false,
+        backgroundColor: Colors.white,
+        elevation: 1,
+      ),
+      body:
+          userData == null
+              ? const Center(child: CircularProgressIndicator())
+              : SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black12,
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                  Wrap(
-                    spacing: 8,
-                    children: selectedPreferences
-                        .map((pref) => Chip(label: Text(pref)))
-                        .toList(),
-                  ),
-                  const Spacer(),
-                  ElevatedButton(
-                    onPressed: () async {
-                      await _authService.signOut();
-                      Navigator.pushReplacementNamed(context, '/login');
-                    },
-                    child: const Text('Logout'),
-                  ),
-                ],
+                      child: Column(
+                        children: [
+                          CircleAvatar(
+                            radius: 50,
+                            backgroundImage: NetworkImage(
+                              'https://www.w3schools.com/howto/img_avatar.png',
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            userData!['name'] ?? 'John Doe',
+                            style: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            userData!['email'] ?? user?.email ?? '',
+                            style: const TextStyle(color: Colors.black54),
+                          ),
+                          const SizedBox(height: 16),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                'Preferences:',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              TextButton(
+                                onPressed: showPreferencesPopup,
+                                style: TextButton.styleFrom(
+                                  foregroundColor: Colors.orange,
+                                ),
+                                child: const Text('Select'),
+                              ),
+                            ],
+                          ),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 6,
+                            children:
+                                selectedPreferences
+                                    .map(
+                                      (pref) => Chip(
+                                        backgroundColor: Colors.orange[100],
+                                        label: Text(
+                                          pref,
+                                          style: const TextStyle(
+                                            color: Colors.orange,
+                                          ),
+                                        ),
+                                      ),
+                                    )
+                                    .toList(),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 30),
+                    ElevatedButton(
+                      onPressed: () async {
+                        await _authService.signOut();
+                        Navigator.pushReplacementNamed(context, '/login');
+                      },
+                      style: ElevatedButton.styleFrom(
+                        minimumSize: const Size(double.infinity, 50),
+                        backgroundColor: Colors.orange,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Logout',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white, // changed text color
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
     );
   }
 }
