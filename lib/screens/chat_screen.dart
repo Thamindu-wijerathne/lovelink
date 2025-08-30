@@ -156,7 +156,13 @@ class _ChatScreenState extends State<ChatScreen> {
           },
         ),
         subtitle: Text(
-          lastMessageBy == currentUserEmail ? "You: $message" : message,
+          message.isEmpty
+              ? "No messages yet"
+              : (lastMessageBy == currentUserEmail
+                  ? "You: ${message.startsWith('https://res.cloudinary.com/') ? 'Image' : message}"
+                  : message.startsWith('https://res.cloudinary.com/')
+                  ? 'Image'
+                  : message),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
