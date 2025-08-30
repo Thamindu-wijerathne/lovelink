@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
 import '../services/db_helper.dart';
+import '../services/private_key_helper.dart';
+import 'dart:convert'; // for base64 encoding
+
+
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -13,6 +17,10 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   final AuthService _authService = AuthService();
   Map<String, dynamic>? userData;
+
+  String? privateKeyBase64;
+  
+
 
   final List<String> preferencePool = [
     'Sports',
@@ -32,29 +40,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
     initData();
   }
 
-  Future<void> initData() async {
-    final user = _authService.getCurrentUser();
+Future<void> initData() async {
+  final user = _authService.getCurrentUser();
 
-    // Fetch user info from Firestore
-    Map<String, dynamic>? data;
-    if (user != null) {
-      final doc =
-          await FirebaseFirestore.instance
-              .collection('users')
-              .doc(user.uid)
-              .get();
-      data =
-          doc.exists ? doc.data() : {'name': 'New User', 'email': user.email};
+  // Fetch user info from Firestore
+  Map<String, dynamic>? data;
+  if (user != null) {
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .get();
+    data = doc.exists ? doc.data() : {'name': 'New User', 'email': user.email};
+
+    // Load private key from SQLite
+    final privateKeyBytes = await PrivateKeyHelper.getPrivateKey(user.uid);
+    if (privateKeyBytes != null) {
+      privateKeyBase64 = base64Encode(privateKeyBytes);
     }
-
-    // Load preferences from SQLite
-    final prefs = await DBHelper.getPreferences();
-
-    setState(() {
-      userData = data;
-      selectedPreferences = prefs;
-    });
   }
+
+  // Load preferences from SQLite
+  final prefs = await DBHelper.getPreferences();
+
+  setState(() {
+    userData = data;
+    selectedPreferences = prefs;
+  });
+}
+
 
   Future<void> savePreferences() async {
     await DBHelper.savePreferences(selectedPreferences);
@@ -183,6 +196,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ],
                       ),
                       child: Column(
+                        
                         children: [
                           CircleAvatar(
                             radius: 50,
@@ -204,6 +218,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             style: const TextStyle(color: Colors.black54),
                           ),
                           const SizedBox(height: 16),
+                          const SizedBox(height: 16),
+
+  SelectableText(
+    "Private Key: $privateKeyBase64",
+    style: const TextStyle(
+      fontSize: 12,
+      color: Colors.redAccent,
+    ),
+  ),
+
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [

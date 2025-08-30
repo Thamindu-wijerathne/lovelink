@@ -6,6 +6,7 @@ import 'chat_service.dart';
 import 'package:cryptography/cryptography.dart';
 import 'dart:convert'; // for base64 encoding
 import 'dart:typed_data';
+import '../services/private_key_helper.dart';
 
 
 
@@ -43,7 +44,11 @@ class AuthService {
         final algorithm = X25519();
         final keyPair = await algorithm.newKeyPair();
         final publicKey = await keyPair.extractPublicKey();
-        final privateKeyData = await keyPair.extractPrivateKeyBytes();
+        // Suppose privateKeyBytes is List<int>
+        List<int> privateKeyBytes = await keyPair.extractPrivateKeyBytes();
+        // Convert to Uint8List
+        Uint8List privateKeyData = Uint8List.fromList(privateKeyBytes);
+
 
         // Convert keys to Base64 for storing in Firestore
         String publicKeyBase64 = base64Encode(publicKey.bytes);
@@ -59,6 +64,12 @@ class AuthService {
           publicKey: publicKeyBase64,
           preferences: userModel.preferences,
         );
+
+        // Save private key locally
+        // here pass privateKeyData instead of Base64 version is passing
+        // that Base64 make it damage.  so past bytethen change their
+        await PrivateKeyHelper.savePrivateKey(user.uid, privateKeyData);
+
 
         await FirebaseFirestore.instance
             .collection('users')
