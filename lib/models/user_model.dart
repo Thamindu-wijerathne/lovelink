@@ -25,7 +25,7 @@ class UserModel {
       'email': email,
       'phone': phone,
       'address': address,
-      'publickey': publicKey,
+      'publicKey': publicKey,
       'preferences': preferences,
     };
   }
@@ -38,7 +38,7 @@ class UserModel {
       email: map['email'] ?? '',
       phone: map['phone'] ?? '',
       address: map['address'] ?? '',
-      publicKey: map['publickey'] ?? '',
+      publicKey: map['publicKey'] ?? '',
       preferences: Map<String, dynamic>.from(map['preferences'] ?? {}),
     );
   }

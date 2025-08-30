@@ -20,11 +20,40 @@ class AuthService {
         email: email,
         password: password,
       );
-      return result.user;
+
+      User? user = result.user;
+      if (user != null) {
+        // Check if private key already exists locally
+        // final existingPrivateKey = await PrivateKeyHelper.getPrivateKey(user.uid);
+
+        // if (existingPrivateKey == null) {
+          // --- Generate new key pair using X25519 ---
+          final algorithm = X25519();
+          final keyPair = await algorithm.newKeyPair();
+          final publicKey = await keyPair.extractPublicKey();
+          final privateKeyBytes = await keyPair.extractPrivateKeyBytes();
+
+          // Convert public key to Base64 to save in Firestore
+          String publicKeyBase64 = base64Encode(publicKey.bytes);
+
+          // Save public key in Firestore
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .update({'publicKey': publicKeyBase64});
+
+          // Save private key locally in SQLite
+          await PrivateKeyHelper.savePrivateKey(
+              user.uid, Uint8List.fromList(privateKeyBytes));
+        // }
+      }
+
+      return user;
     } catch (e) {
       throw Exception(e.toString());
     }
   }
+
 
   // Sign Up + Save extra info
   Future<User?> signUpWithDetails({
@@ -69,7 +98,6 @@ class AuthService {
         // here pass privateKeyData instead of Base64 version is passing
         // that Base64 make it damage.  so past bytethen change their
         await PrivateKeyHelper.savePrivateKey(user.uid, privateKeyData);
-
 
         await FirebaseFirestore.instance
             .collection('users')

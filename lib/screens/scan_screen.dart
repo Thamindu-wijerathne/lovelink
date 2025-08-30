@@ -126,19 +126,19 @@ class _ScanScreenState extends State<ScanScreen> {
                                   eyeShape: QrEyeShape.circle,
                                 ),
                               ),
-                              // const SizedBox(height: 20),
-                              // ElevatedButton.icon(
-                              //   onPressed: () => startChat(),
-                              //   icon: const Icon(Icons.chat),
-                              //   label: const Text('Start Chat'),
-                              //   style: ElevatedButton.styleFrom(
-                              //     backgroundColor: const Color(0xFFFF914D),
-                              //     shape: RoundedRectangleBorder(
-                              //       borderRadius: BorderRadius.circular(30),
-                              //     ),
-                              //     fixedSize: const Size(180, 45),
-                              //   ),
-                              // ),
+                              const SizedBox(height: 20),
+                              ElevatedButton.icon(
+                                onPressed: () => startChat(),
+                                icon: const Icon(Icons.chat),
+                                label: const Text('Start Chat'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFFFF914D),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(30),
+                                  ),
+                                  fixedSize: const Size(180, 45),
+                                ),
+                              ),
                             ],
                           ),
                 ),
