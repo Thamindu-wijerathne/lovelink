@@ -17,6 +17,7 @@ class _SignupScreenState extends State<SignupScreen> {
   final TextEditingController nameController = TextEditingController();
   final TextEditingController phoneController = TextEditingController();
   final TextEditingController addressController = TextEditingController();
+  final TextEditingController publicKeyController = TextEditingController();
 
   final AuthService _authService = AuthService();
 
@@ -50,6 +51,7 @@ class _SignupScreenState extends State<SignupScreen> {
           email: emailController.text.trim().toLowerCase(),
           phone: phoneController.text.trim(),
           address: addressController.text.trim(),
+          publicKey: publicKeyController.text.trim(),
           preferences: {'theme': 'light'},
         ),
       );

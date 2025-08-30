@@ -3,6 +3,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:lovelink/services/message_service.dart';
 import '../models/user_model.dart'; // your UserModel
 import 'chat_service.dart';
+import 'package:cryptography/cryptography.dart';
+import 'dart:convert'; // for base64 encoding
+import 'dart:typed_data';
+
+
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -34,10 +39,31 @@ class AuthService {
 
       User? user = result.user;
       if (user != null) {
+        // --- Generate key pair using X25519 (public/private) ---
+        final algorithm = X25519();
+        final keyPair = await algorithm.newKeyPair();
+        final publicKey = await keyPair.extractPublicKey();
+        final privateKeyData = await keyPair.extractPrivateKeyBytes();
+
+        // Convert keys to Base64 for storing in Firestore
+        String publicKeyBase64 = base64Encode(publicKey.bytes);
+        String privateKeyBase64 = base64Encode(privateKeyData);
+
+        // Create UserModel including public key
+        UserModel newUser = UserModel(
+          uid: user.uid,
+          name: userModel.name,
+          email: userModel.email,
+          phone: userModel.phone,
+          address: userModel.address,
+          publicKey: publicKeyBase64,
+          preferences: userModel.preferences,
+        );
+
         await FirebaseFirestore.instance
             .collection('users')
             .doc(user.uid)
-            .set(userModel.toMap());
+            .set(newUser.toMap());
       }
       return user;
     } catch (e) {

@@ -4,6 +4,7 @@ class UserModel {
   final String email;
   final String phone;
   final String address;
+  final String publicKey;
   final Map<String, dynamic> preferences;
 
   UserModel({
@@ -12,6 +13,7 @@ class UserModel {
     required this.email,
     required this.phone,
     required this.address,
+    required this.publicKey,
     required this.preferences,
   });
 
@@ -23,6 +25,7 @@ class UserModel {
       'email': email,
       'phone': phone,
       'address': address,
+      'publickey': publicKey,
       'preferences': preferences,
     };
   }
@@ -35,6 +38,7 @@ class UserModel {
       email: map['email'] ?? '',
       phone: map['phone'] ?? '',
       address: map['address'] ?? '',
+      publicKey: map['publickey'] ?? '',
       preferences: Map<String, dynamic>.from(map['preferences'] ?? {}),
     );
   }
