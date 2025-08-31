@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:image_picker/image_picker.dart';
 import '../services/auth_service.dart';
 import '../services/db_helper.dart';
+import '../services/image_service.dart';
+
+import 'dart:io';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -12,7 +16,9 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final AuthService _authService = AuthService();
+  final ImageService _imageService = ImageService();
   Map<String, dynamic>? userData;
+  XFile? _image;
 
   final List<String> preferencePool = [
     'Sports',
@@ -44,7 +50,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
               .doc(user.uid)
               .get();
       data =
-          doc.exists ? doc.data() : {'name': 'New User', 'email': user.email};
+          doc.exists
+              ? doc.data()
+              : {
+                'name': 'New User',
+                'email': user.email,
+                'profilePicture': null,
+              };
     }
 
     // Load preferences from SQLite
@@ -58,6 +70,85 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> savePreferences() async {
     await DBHelper.savePreferences(selectedPreferences);
+  }
+
+  void viewProfilePicture(String imageUrl) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) {
+          XFile? localImage = _image;
+
+          return StatefulBuilder(
+            builder: (context, setStateDialog) {
+              return Scaffold(
+                appBar: AppBar(
+                  backgroundColor: Colors.black,
+                  iconTheme: const IconThemeData(color: Colors.white),
+                  title: const Text(
+                    'Profile Picture',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  actions: [
+                    IconButton(
+                      icon: const Icon(Icons.edit),
+                      onPressed: () async {
+                        final picked = await ImagePicker().pickImage(
+                          source: ImageSource.gallery,
+                        );
+                        if (picked != null) {
+                          setStateDialog(() {
+                            localImage = picked;
+                          });
+                        }
+                      },
+                    ),
+                    localImage != null
+                        ? IconButton(
+                          icon: const Icon(Icons.check),
+                          onPressed: () async {
+                            final result = await _imageService.uploadImage(
+                              localImage!,
+                            );
+                            if (result != null) {
+                              final user = await _authService.getCurrentUser();
+                              if (user != null) {
+                                await FirebaseFirestore.instance
+                                    .collection('users')
+                                    .doc(user.uid)
+                                    .update({'profilePicture': result});
+                                setState(() {
+                                  userData!['profilePicture'] = result;
+                                  _image = null;
+                                });
+                                Navigator.pop(context);
+                              }
+                            }
+                          },
+                        )
+                        : Container(),
+                  ],
+                ),
+                backgroundColor: Colors.black,
+                body: Center(
+                  child: InteractiveViewer(
+                    child:
+                        localImage != null
+                            ? Image.file(
+                              File(localImage!.path),
+                              width: 400,
+                              height: 400,
+                              fit: BoxFit.cover,
+                            )
+                            : Image.network(imageUrl),
+                  ),
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
   }
 
   void showPreferencesPopup() {
@@ -184,10 +275,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       child: Column(
                         children: [
-                          CircleAvatar(
-                            radius: 50,
-                            backgroundImage: NetworkImage(
-                              'https://www.w3schools.com/howto/img_avatar.png',
+                          GestureDetector(
+                            onTap: () {
+                              viewProfilePicture(
+                                userData!['profilePicture'] ??
+                                    'https://www.w3schools.com/howto/img_avatar.png',
+                              );
+                              print('Avatar tapped');
+                            },
+                            child: CircleAvatar(
+                              radius: 50,
+                              backgroundImage: NetworkImage(
+                                userData!['profilePicture'] ??
+                                    'https://www.w3schools.com/howto/img_avatar.png',
+                              ),
                             ),
                           ),
                           const SizedBox(height: 16),

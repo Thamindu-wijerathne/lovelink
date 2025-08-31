@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart' hide Key;
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:lovelink/services/image_service.dart';
 import '../services/message_service.dart';
 import '../services/auth_service.dart';
 import 'dart:async';
+import 'dart:io';
 
 import 'dart:ffi';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:encrypt/encrypt.dart';
 import 'dart:math';
 import 'dart:typed_data';
@@ -35,15 +37,19 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   DateTime? validTill;
   bool isExpired = false;
   bool sendMessageEnabled = true;
+  XFile? _pickedImage;
+  bool isUploading = false;
 
   final TextEditingController _controller = TextEditingController();
   final ChatService _chatService = ChatService();
   final ScrollController _scrollController = ScrollController();
   final AuthService _authService = AuthService();
+  final ImageService _imageService = ImageService();
   int _lastMessageCount = 0;
 
   int? _extendDays; // NEW: store request days
   String? _requestSender;
+  String chatProfilePic = '';
 
   @override
   void initState() {
@@ -58,6 +64,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
     // Fetch username
     _getUserName(widget.chatPartnerEmail);
+    _getUserProfilePic(widget.chatPartnerEmail);
+
     // mark user's current chat
     _authService.setActiveChat(widget.chatPartnerEmail);
     _chatService.resetUnreadCount(
@@ -165,6 +173,16 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     if (userName.isNotEmpty) {
       setState(() {
         chatName = userName;
+      });
+    }
+  }
+
+  void _getUserProfilePic(String email) async {
+    String profilePic =
+        await _authService.getUserProfilePicByEmail(email) ?? '';
+    if (profilePic.isNotEmpty) {
+      setState(() {
+        chatProfilePic = profilePic;
       });
     }
   }
@@ -293,22 +311,104 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     return '$hours:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
   }
 
+  Future<void> uploadAndSendImage() async {
+    try {
+      if (_pickedImage != null) {
+        setState(() {
+          isUploading = true;
+        });
+        final imageUrl = await _imageService.uploadImage(_pickedImage);
+        if (imageUrl != null) {
+          _chatService.sendMessage(
+            senderEmail: widget.userEmail,
+            receiverEmail: widget.chatPartnerEmail,
+            text: imageUrl,
+            type: 'image',
+          );
+          setState(() {
+            isUploading = false;
+            _pickedImage = null;
+          });
+        }
+      }
+    } catch (e) {
+      print("Error uploading image: $e");
+    }
+  }
+
+  void viewFullImage(String imageUrl, {bool isImage = true}) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder:
+            (context) => Scaffold(
+              appBar: AppBar(
+                backgroundColor: Colors.black,
+                iconTheme: const IconThemeData(color: Colors.white),
+
+                actions: [
+                  isImage
+                      ? IconButton(
+                        icon: const Icon(Icons.download),
+                        onPressed: () async {
+                          // Implement download functionality
+                        },
+                      )
+                      : SizedBox(),
+                ],
+              ),
+              backgroundColor: Colors.black,
+              body: Center(
+                child: InteractiveViewer(child: Image.network(imageUrl)),
+              ),
+            ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 1,
+        // leading: Icon(Icons.arrow_back),
         title: SingleChildScrollView(
           scrollDirection: Axis.horizontal,
-          child: Row(
-            children: [
-              // Icon(Icons.verified_user),
-              Padding(
-                padding: const EdgeInsets.only(left: 8.0),
-                child: Text(chatName),
-              ),
-            ],
+          child: GestureDetector(
+            onTap: () {
+              viewFullImage(chatProfilePic, isImage: false);
+            },
+            child: Row(
+              children: [
+                chatProfilePic != ""
+                    ? CircleAvatar(
+                      radius: 20,
+                      backgroundImage: NetworkImage(chatProfilePic),
+                    )
+                    : (Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.grey,
+                      ),
+                      height: 40,
+                      width: 40,
+                      child: Center(
+                        child: Text(
+                          chatName[0],
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    )),
+                Padding(
+                  padding: const EdgeInsets.only(left: 8.0),
+                  child: Text(chatName),
+                ),
+              ],
+            ),
           ),
         ),
         actions: [
@@ -446,119 +546,159 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                       ),
                     ),
                   Expanded(
-  child: Container(
-    color: const Color.fromARGB(255, 255, 252, 248),
-    child: StreamBuilder<QuerySnapshot>(
-      stream: _chatService.getMessages(
-        email1: widget.userEmail,
-        email2: widget.chatPartnerEmail,
-      ),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return const Center(
-            child: CircularProgressIndicator(),
-          );
-        }
+                    child: Container(
+                      color: const Color.fromARGB(255, 255, 252, 248),
+                      child: StreamBuilder<QuerySnapshot>(
+                        stream: _chatService.getMessages(
+                          email1: widget.userEmail,
+                          email2: widget.chatPartnerEmail,
+                        ),
+                        builder: (context, snapshot) {
+                          if (!snapshot.hasData) {
+                            return const Center(
+                              child: CircularProgressIndicator(),
+                            );
+                          }
 
-        final key = Key.fromUtf8('12345678901234567890123456789012');
-        final iv = IV.fromUtf8('1234567890123456');
-        final encrypter = Encrypter(AES(key));
+                          final key = Key.fromUtf8(
+                            '12345678901234567890123456789012',
+                          );
+                          final iv = IV.fromUtf8('1234567890123456');
+                          final encrypter = Encrypter(AES(key));
 
-        final messages = snapshot.data!.docs
-            .map((doc) {
-              final data = doc.data() as Map<String, dynamic>;
-              String decryptedText;
-              try {
-                decryptedText = encrypter
-                    .decrypt(Encrypted(base64Decode(data['text'])), iv: iv);
-              } catch (e) {
-                decryptedText = '[Could not decrypt]';
-              }
-              return {
-                ...data,
-                'text': decryptedText,
-              };
-            })
-            .toList()
-            .reversed
-            .toList();
+                          final messages =
+                              snapshot.data!.docs
+                                  .map((doc) {
+                                    final data =
+                                        doc.data() as Map<String, dynamic>;
+                                    String decryptedText;
+                                    try {
+                                      decryptedText = encrypter.decrypt(
+                                        Encrypted(base64Decode(data['text'])),
+                                        iv: iv,
+                                      );
+                                    } catch (e) {
+                                      decryptedText = '[Could not decrypt]';
+                                    }
+                                    return {...data, 'text': decryptedText};
+                                  })
+                                  .toList()
+                                  .reversed
+                                  .toList();
 
-        if (messages.length > _lastMessageCount) {
-          WidgetsBinding.instance.addPostFrameCallback(
-            (_) => _scrollToBottom(),
-          );
-        }
-        _lastMessageCount = messages.length;
+                          if (messages.length > _lastMessageCount) {
+                            WidgetsBinding.instance.addPostFrameCallback(
+                              (_) => _scrollToBottom(),
+                            );
+                          }
+                          _lastMessageCount = messages.length;
 
-        return ListView.builder(
-          reverse: true,
-          controller: _scrollController,
-          padding: const EdgeInsets.symmetric(
-            vertical: 10,
-            horizontal: 8,
-          ),
-          itemCount: messages.length,
-          itemBuilder: (context, index) {
-            final msg = messages[index];
-            final isMe = msg['senderEmail'] == widget.userEmail;
+                          return ListView.builder(
+                            reverse: true,
+                            controller: _scrollController,
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 10,
+                              horizontal: 8,
+                            ),
+                            itemCount: messages.length,
+                            itemBuilder: (context, index) {
+                              final msg = messages[index];
+                              final isMe =
+                                  msg['senderEmail'] == widget.userEmail;
 
-            return Align(
-              alignment:
-                  isMe ? Alignment.centerRight : Alignment.centerLeft,
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxWidth: MediaQuery.of(context).size.width * 0.75,
-                ),
-                child: Container(
-                  margin: const EdgeInsets.symmetric(vertical: 4),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 10,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isMe ? Colors.orange[400] : Colors.grey[400],
-                    borderRadius: BorderRadius.only(
-                      topLeft: const Radius.circular(20),
-                      topRight: const Radius.circular(20),
-                      bottomLeft: Radius.circular(isMe ? 20 : 0),
-                      bottomRight: Radius.circular(isMe ? 0 : 20),
+                              return Align(
+                                alignment:
+                                    isMe
+                                        ? Alignment.centerRight
+                                        : Alignment.centerLeft,
+                                child: ConstrainedBox(
+                                  constraints: BoxConstraints(
+                                    maxWidth:
+                                        MediaQuery.of(context).size.width *
+                                        0.75,
+                                  ),
+                                  child: Container(
+                                    margin: const EdgeInsets.symmetric(
+                                      vertical: 4,
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 14,
+                                      vertical: 10,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color:
+                                          isMe
+                                              ? Colors.orange[400]
+                                              : Colors.grey[400],
+                                      borderRadius: BorderRadius.only(
+                                        topLeft: const Radius.circular(20),
+                                        topRight: const Radius.circular(20),
+                                        bottomLeft: Radius.circular(
+                                          isMe ? 20 : 0,
+                                        ),
+                                        bottomRight: Radius.circular(
+                                          isMe ? 0 : 20,
+                                        ),
+                                      ),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.05),
+                                          blurRadius: 2,
+                                          offset: const Offset(1, 1),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.end,
+                                      children: [
+                                        msg['type'] == 'image'
+                                            ? ClipRRect(
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                              child: GestureDetector(
+                                                onTap: () {
+                                                  viewFullImage(msg['text']);
+                                                },
+                                                child: Image.network(
+                                                  msg['text'],
+                                                  width: 250,
+                                                  height: 250,
+                                                  fit: BoxFit.cover,
+                                                ),
+                                              ),
+                                            )
+                                            : Text(
+                                              msg['text'] ?? '',
+                                              style: TextStyle(
+                                                color:
+                                                    isMe
+                                                        ? Colors.white
+                                                        : Colors.black87,
+                                              ),
+                                            ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          _formatTimestamp(msg['createdAt']),
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            color:
+                                                isMe
+                                                    ? Colors.white70
+                                                    : Colors.black54,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      ),
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 2,
-                        offset: const Offset(1, 1),
-                      ),
-                    ],
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        msg['text'] ?? '',
-                        style: TextStyle(
-                          color: isMe ? Colors.white : Colors.black87,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _formatTimestamp(msg['createdAt']),
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: isMe ? Colors.white70 : Colors.black54,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      },
-    ),
-  ),
-),
 
                   // Input Area
                   Container(
@@ -611,6 +751,105 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                   ),
                 ],
               ),
+            ),
+       if (_pickedImage != null)
+            Container(
+              height: MediaQuery.of(context).size.height * 0.9,
+              color: const Color.fromARGB(255, 255, 255, 255),
+              child:
+                  isUploading
+                      ? Center(
+                        child: Container(
+                          padding: const EdgeInsets.all(20),
+                          height: 250,
+                          width: 250,
+                          alignment: Alignment.center,
+
+                          child: Column(
+                            children: [
+                              const SizedBox(height: 20),
+                              Icon(
+                                Icons.upload,
+                                color: const Color.fromARGB(255, 0, 0, 0),
+                                size: 100,
+                              ),
+                              const SizedBox(height: 10),
+                              const Text(
+                                'Sending the Image',
+                                style: TextStyle(
+                                  color: Color.fromARGB(255, 0, 0, 0),
+                                  fontSize: 15,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                      : Stack(
+                        children: [
+                          // Image preview
+                          Padding(
+                            padding: const EdgeInsets.all(10.0),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(20.0),
+                              child: Image.file(
+                                File(_pickedImage!.path),
+                                fit: BoxFit.contain,
+                                width: double.infinity,
+                                height: double.infinity,
+                              ),
+                            ),
+                          ),
+
+                          // Floating send button (bottom right)
+                          Positioned(
+                            bottom: 20,
+                            right: 20,
+                            child: GestureDetector(
+                              onTap: () {
+                                uploadAndSendImage();
+                              },
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: const Color.fromARGB(255, 0, 0, 0),
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(10.0),
+                                  child: const Icon(
+                                    Icons.send,
+                                    color: Colors.white,
+                                    size: 30,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+
+                          Positioned(
+                            top: 20,
+                            left: 20,
+                            child: GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _pickedImage = null;
+                                });
+                                // send action
+                              },
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.close,
+                                  color: Color.fromARGB(255, 255, 0, 0),
+                                  size: 30,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
             ),
         ],
       ),

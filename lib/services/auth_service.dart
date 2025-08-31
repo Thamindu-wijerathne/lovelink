@@ -113,4 +113,22 @@ class AuthService {
       return null;
     }
   }
+
+  Future<String?> getUserProfilePicByEmail(String email) async {
+    try {
+      QuerySnapshot snapshot =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .where('email', isEqualTo: email.toLowerCase())
+              .limit(1)
+              .get();
+
+      if (snapshot.docs.isNotEmpty) {
+        return snapshot.docs.first['profilePicture'];
+      }
+    } catch (e) {
+      throw Exception(e.toString());
+    }
+    return null;
+  }
 }
