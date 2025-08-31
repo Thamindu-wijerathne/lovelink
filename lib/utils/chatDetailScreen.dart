@@ -42,6 +42,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
   int? _extendDays; // NEW: store request days
   String? _requestSender;
+  String chatProfilePic = '';
 
   @override
   void initState() {
@@ -56,6 +57,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
     // Fetch username
     _getUserName(widget.chatPartnerEmail);
+    _getUserProfilePic(widget.chatPartnerEmail);
+
     // mark user's current chat
     _authService.setActiveChat(widget.chatPartnerEmail);
     _chatService.resetUnreadCount(
@@ -163,6 +166,16 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     if (userName.isNotEmpty) {
       setState(() {
         chatName = userName;
+      });
+    }
+  }
+
+  void _getUserProfilePic(String email) async {
+    String profilePic =
+        await _authService.getUserProfilePicByEmail(email) ?? '';
+    if (profilePic.isNotEmpty) {
+      setState(() {
+        chatProfilePic = profilePic;
       });
     }
   }
@@ -316,7 +329,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     }
   }
 
-  void viewFullImage(String imageUrl) {
+  void viewFullImage(String imageUrl, {bool isImage = true}) {
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -325,13 +338,16 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
               appBar: AppBar(
                 backgroundColor: Colors.black,
                 iconTheme: const IconThemeData(color: Colors.white),
+
                 actions: [
-                  IconButton(
-                    icon: const Icon(Icons.download),
-                    onPressed: () async {
-                      // Implement download functionality
-                    },
-                  ),
+                  isImage
+                      ? IconButton(
+                        icon: const Icon(Icons.download),
+                        onPressed: () async {
+                          // Implement download functionality
+                        },
+                      )
+                      : SizedBox(),
                 ],
               ),
               backgroundColor: Colors.black,
@@ -349,16 +365,43 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 1,
+        // leading: Icon(Icons.arrow_back),
         title: SingleChildScrollView(
           scrollDirection: Axis.horizontal,
-          child: Row(
-            children: [
-              // Icon(Icons.verified_user),
-              Padding(
-                padding: const EdgeInsets.only(left: 8.0),
-                child: Text(chatName),
-              ),
-            ],
+          child: GestureDetector(
+            onTap: () {
+              viewFullImage(chatProfilePic, isImage: false);
+            },
+            child: Row(
+              children: [
+                chatProfilePic != ""
+                    ? CircleAvatar(
+                      radius: 20,
+                      backgroundImage: NetworkImage(chatProfilePic),
+                    )
+                    : (Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.grey,
+                      ),
+                      height: 40,
+                      width: 40,
+                      child: Center(
+                        child: Text(
+                          chatName[0],
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    )),
+                Padding(
+                  padding: const EdgeInsets.only(left: 8.0),
+                  child: Text(chatName),
+                ),
+              ],
+            ),
           ),
         ),
         actions: [

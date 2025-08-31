@@ -17,7 +17,8 @@ class _ChatScreenState extends State<ChatScreen> {
   final AuthService _authService = AuthService();
   final Random random = Random();
   String myMail = "";
-
+  String profilePic = "";
+  var userData = {};
   @override
   void initState() {
     super.initState();
@@ -34,6 +35,11 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<String> _loadUserNameData(String email) async {
     final user = await _authService.getUserNameByEmail(email);
     return user ?? email;
+  }
+
+  Future<String> _loadUserProfilePic(String email) async {
+    final user = await _authService.getUserProfilePicByEmail(email);
+    return user ?? "";
   }
 
   @override
@@ -128,17 +134,30 @@ class _ChatScreenState extends State<ChatScreen> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       child: ListTile(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        leading: CircleAvatar(
-          backgroundColor:
-              chatAvatarColors[random.nextInt(chatAvatarColors.length)],
-          child: Text(
-            name.isNotEmpty ? name[0].toUpperCase() : "?",
-
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+        leading: FutureBuilder<String>(
+          future: _loadUserProfilePic(name),
+          builder: (context, snapshot) {
+            String? imageUrl = snapshot.data;
+            return CircleAvatar(
+              radius: 25,
+              backgroundImage:
+                  (imageUrl != null && imageUrl.isNotEmpty)
+                      ? NetworkImage(imageUrl)
+                      : null,
+              backgroundColor:
+                  chatAvatarColors[random.nextInt(chatAvatarColors.length)],
+              child:
+                  (imageUrl == null || imageUrl.isEmpty || imageUrl == "")
+                      ? Text(
+                        name.isNotEmpty ? name[0].toUpperCase() : "?",
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      )
+                      : null,
+            );
+          },
         ),
         title: FutureBuilder<String>(
           future: _loadUserNameData(name),

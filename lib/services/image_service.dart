@@ -20,7 +20,7 @@ class ImageService {
             resourceType: CloudinaryResourceType.Image,
           ),
         );
-        return response.secureUrl; // The URL you can store in your chat message
+        return response.secureUrl;
       } on CloudinaryException catch (e) {
         print(e.message);
         return null;
