@@ -216,6 +216,23 @@ class _ScanScreenState extends State<ScanScreen> {
                   ),
                 ],
               ),
+              const SizedBox(height: 20),
+
+    // New button
+    ElevatedButton.icon(
+      onPressed: () {
+        startChat();
+      },
+      icon: const Icon(Icons.info),
+      label: const Text('New Button'),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xFF6C63FF),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(30),
+        ),
+        fixedSize: const Size(180, 45),
+      ),
+    ),
             ],
           ),
         ),
