@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Key;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
@@ -7,6 +7,14 @@ import '../services/message_service.dart';
 import '../services/auth_service.dart';
 import 'dart:async';
 import 'dart:io';
+
+import 'dart:ffi';
+
+import 'package:encrypt/encrypt.dart';
+import 'dart:math';
+import 'dart:typed_data';
+import 'dart:convert';
+import 'package:flutter/foundation.dart' hide Key;
 
 class ChatDetailScreen extends StatefulWidget {
   final String userEmail;
@@ -37,7 +45,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   final ScrollController _scrollController = ScrollController();
   final AuthService _authService = AuthService();
   final ImageService _imageService = ImageService();
-
   int _lastMessageCount = 0;
 
   int? _extendDays; // NEW: store request days
@@ -538,220 +545,214 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                         ],
                       ),
                     ),
-                  if (_pickedImage == null)
-                    Expanded(
-                      child: Container(
-                        color: const Color.fromARGB(255, 255, 252, 248),
-                        child: StreamBuilder<QuerySnapshot>(
-                          stream: _chatService.getMessages(
-                            email1: widget.userEmail,
-                            email2: widget.chatPartnerEmail,
-                          ),
-                          builder: (context, snapshot) {
-                            if (!snapshot.hasData) {
-                              return const Center(
-                                child: CircularProgressIndicator(),
-                              );
-                            }
+                  Expanded(
+                    child: Container(
+                      color: const Color.fromARGB(255, 255, 252, 248),
+                      child: StreamBuilder<QuerySnapshot>(
+                        stream: _chatService.getMessages(
+                          email1: widget.userEmail,
+                          email2: widget.chatPartnerEmail,
+                        ),
+                        builder: (context, snapshot) {
+                          if (!snapshot.hasData) {
+                            return const Center(
+                              child: CircularProgressIndicator(),
+                            );
+                          }
 
-                            final messages =
-                                snapshot.data!.docs
-                                    .map(
-                                      (doc) =>
-                                          doc.data() as Map<String, dynamic>,
-                                    )
-                                    .toList()
-                                    .reversed
-                                    .toList();
+                          final key = Key.fromUtf8(
+                            '12345678901234567890123456789012',
+                          );
+                          final iv = IV.fromUtf8('1234567890123456');
+                          final encrypter = Encrypter(AES(key));
 
-                            if (messages.length > _lastMessageCount) {
-                              WidgetsBinding.instance.addPostFrameCallback(
-                                (_) => _scrollToBottom(),
-                              );
-                            }
-                            _lastMessageCount = messages.length;
+                          final messages =
+                              snapshot.data!.docs
+                                  .map((doc) {
+                                    final data =
+                                        doc.data() as Map<String, dynamic>;
+                                    String decryptedText;
+                                    try {
+                                      decryptedText = encrypter.decrypt(
+                                        Encrypted(base64Decode(data['text'])),
+                                        iv: iv,
+                                      );
+                                    } catch (e) {
+                                      decryptedText = '[Could not decrypt]';
+                                    }
+                                    return {...data, 'text': decryptedText};
+                                  })
+                                  .toList()
+                                  .reversed
+                                  .toList();
 
-                            return ListView.builder(
-                              reverse: true,
-                              controller: _scrollController,
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 10,
-                                horizontal: 8,
-                              ),
-                              itemCount: messages.length,
-                              itemBuilder: (context, index) {
-                                final msg = messages[index];
-                                final isMe =
-                                    msg['senderEmail'] == widget.userEmail;
+                          if (messages.length > _lastMessageCount) {
+                            WidgetsBinding.instance.addPostFrameCallback(
+                              (_) => _scrollToBottom(),
+                            );
+                          }
+                          _lastMessageCount = messages.length;
 
-                                return Align(
-                                  alignment:
-                                      isMe
-                                          ? Alignment.centerRight
-                                          : Alignment.centerLeft,
-                                  child: ConstrainedBox(
-                                    constraints: BoxConstraints(
-                                      maxWidth:
-                                          MediaQuery.of(context).size.width *
-                                          0.75,
+                          return ListView.builder(
+                            reverse: true,
+                            controller: _scrollController,
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 10,
+                              horizontal: 8,
+                            ),
+                            itemCount: messages.length,
+                            itemBuilder: (context, index) {
+                              final msg = messages[index];
+                              final isMe =
+                                  msg['senderEmail'] == widget.userEmail;
+
+                              return Align(
+                                alignment:
+                                    isMe
+                                        ? Alignment.centerRight
+                                        : Alignment.centerLeft,
+                                child: ConstrainedBox(
+                                  constraints: BoxConstraints(
+                                    maxWidth:
+                                        MediaQuery.of(context).size.width *
+                                        0.75,
+                                  ),
+                                  child: Container(
+                                    margin: const EdgeInsets.symmetric(
+                                      vertical: 4,
                                     ),
-                                    child: Container(
-                                      margin: const EdgeInsets.symmetric(
-                                        vertical: 4,
-                                      ),
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 14,
-                                        vertical: 10,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color:
-                                            isMe
-                                                ? Colors.orange[400]
-                                                : Colors.grey[400],
-                                        borderRadius: BorderRadius.only(
-                                          topLeft: const Radius.circular(20),
-                                          topRight: const Radius.circular(20),
-                                          bottomLeft: Radius.circular(
-                                            isMe ? 20 : 0,
-                                          ),
-                                          bottomRight: Radius.circular(
-                                            isMe ? 0 : 20,
-                                          ),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 14,
+                                      vertical: 10,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color:
+                                          isMe
+                                              ? Colors.orange[400]
+                                              : Colors.grey[400],
+                                      borderRadius: BorderRadius.only(
+                                        topLeft: const Radius.circular(20),
+                                        topRight: const Radius.circular(20),
+                                        bottomLeft: Radius.circular(
+                                          isMe ? 20 : 0,
                                         ),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Colors.black.withOpacity(
-                                              0.05,
-                                            ),
-                                            blurRadius: 2,
-                                            offset: const Offset(1, 1),
-                                          ),
-                                        ],
+                                        bottomRight: Radius.circular(
+                                          isMe ? 0 : 20,
+                                        ),
                                       ),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.end,
-                                        children: [
-                                          msg['type'] == 'image'
-                                              ? ClipRRect(
-                                                borderRadius:
-                                                    BorderRadius.circular(12),
-                                                child: GestureDetector(
-                                                  onTap: () {
-                                                    viewFullImage(msg['text']);
-                                                  },
-                                                  child: Image.network(
-                                                    msg['text'],
-                                                    width: 250,
-                                                    height: 250,
-                                                    fit: BoxFit.cover,
-                                                  ),
-                                                ),
-                                              )
-                                              : Text(
-                                                msg['text'] ?? '',
-                                                style: TextStyle(
-                                                  color:
-                                                      isMe
-                                                          ? Colors.white
-                                                          : Colors.black87,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.05),
+                                          blurRadius: 2,
+                                          offset: const Offset(1, 1),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.end,
+                                      children: [
+                                        msg['type'] == 'image'
+                                            ? ClipRRect(
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                              child: GestureDetector(
+                                                onTap: () {
+                                                  viewFullImage(msg['text']);
+                                                },
+                                                child: Image.network(
+                                                  msg['text'],
+                                                  width: 250,
+                                                  height: 250,
+                                                  fit: BoxFit.cover,
                                                 ),
                                               ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            _formatTimestamp(msg['createdAt']),
-                                            style: TextStyle(
-                                              fontSize: 10,
-                                              color:
-                                                  isMe
-                                                      ? Colors.white70
-                                                      : Colors.black54,
+                                            )
+                                            : Text(
+                                              msg['text'] ?? '',
+                                              style: TextStyle(
+                                                color:
+                                                    isMe
+                                                        ? Colors.white
+                                                        : Colors.black87,
+                                              ),
                                             ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          _formatTimestamp(msg['createdAt']),
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            color:
+                                                isMe
+                                                    ? Colors.white70
+                                                    : Colors.black54,
                                           ),
-                                        ],
-                                      ),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                );
-                              },
-                            );
-                          },
-                        ),
-                      ),
-                    ),
-                  // Input Area
-                  if (_pickedImage == null)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 6,
-                      ),
-                      color: const Color.fromARGB(29, 0, 0, 0),
-
-                      child: Row(
-                        children: [
-                          IconButton(
-                            icon: const Icon(
-                              Icons.image,
-                              color: Color.fromARGB(255, 0, 0, 0),
-                            ),
-                            onPressed: () async {
-                              final pickedImage =
-                                  await _imageService.pickImage();
-
-                              if (pickedImage != null) {
-                                setState(() {
-                                  _pickedImage = pickedImage as XFile?;
-                                });
-                              } else {
-                                setState(() {
-                                  _pickedImage = null;
-                                });
-                              }
-                            },
-                          ),
-                          Expanded(
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.grey[100],
-                                borderRadius: BorderRadius.circular(25),
-                              ),
-                              child: TextField(
-                                controller: _controller,
-                                minLines: 1,
-                                maxLines: 5,
-                                decoration: const InputDecoration(
-                                  hintText: 'Type a message',
-                                  border: InputBorder.none,
                                 ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          GestureDetector(
-                            onTap: _sendMessage,
-                            child: Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: const Color.fromARGB(255, 0, 0, 0),
-                              ),
-                              child: const Icon(
-                                Icons.send,
-                                color: Color.fromARGB(255, 255, 255, 255),
-                              ),
-                            ),
-                          ),
-                        ],
+                              );
+                            },
+                          );
+                        },
                       ),
                     ),
+                  ),
+
+                  // Input Area
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 6,
+                    ),
+                    color: Colors.white,
+                    child: Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(
+                            Icons.emoji_emotions_outlined,
+                            color: Colors.grey,
+                          ),
+                          onPressed: () {},
+                        ),
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[100],
+                              borderRadius: BorderRadius.circular(25),
+                            ),
+                            child: TextField(
+                              controller: _controller,
+                              minLines: 1,
+                              maxLines: 5,
+                              decoration: const InputDecoration(
+                                hintText: 'Type a message',
+                                border: InputBorder.none,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        GestureDetector(
+                          onTap: _sendMessage,
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Color.fromARGB(255, 52, 52, 52),
+                            ),
+                            child: const Icon(Icons.send, color: Colors.white),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
-          if (_pickedImage != null)
+       if (_pickedImage != null)
             Container(
               height: MediaQuery.of(context).size.height * 0.9,
               color: const Color.fromARGB(255, 255, 255, 255),
