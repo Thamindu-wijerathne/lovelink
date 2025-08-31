@@ -6,6 +6,7 @@ import 'package:encrypt/encrypt.dart';
 import 'dart:math';
 import 'dart:typed_data';
 import 'dart:convert';
+import 'package:flutter/foundation.dart' hide Key;
 
 
 class ChatService {
@@ -40,15 +41,12 @@ class ChatService {
     final chatId = getChatId(email1, email2);
     final docRef = _firestore.collection('chats').doc(chatId);
 
-  final keyBytes = generateSecureRandomBytes(32); // 32 bytes for AES-256
-  final keyBase64 = base64Encode(keyBytes);
-
     final doc = await docRef.get();
     if (!doc.exists) {
       await docRef.set({
         'participants': [email1, email2],
         'lastMessage': '',
-        'chatKey': keyBase64, // securely store the key
+        'chatKey': '12345678901234567890123456789012', // securely store the key
         'lastMessageAt': FieldValue.serverTimestamp(),
         'validTill': Timestamp.fromDate(
           DateTime.now().add(Duration(hours: validHours)),
@@ -65,25 +63,27 @@ class ChatService {
   }) async {
     final chatId = getChatId(senderEmail, receiverEmail);
       final chatRef = _firestore.collection('chats').doc(chatId);
-      final chatSnapshot = await chatRef.get();
+      Encrypted? encrypted;
 
-      if (!chatSnapshot.exists) return;
-
-      // --- Get saved key ---
-      final chatKeyBase64 = chatSnapshot.data()!['chatKey'] as String;
-      final key = Key(base64Decode(chatKeyBase64));
-
-      // --- Use a fixed IV (simplest) ---
-      final iv = IV.fromLength(16); // all zeros, same for all messages
-
-      // --- Encrypt ---
+    try {
+      final key = Key.fromUtf8('12345678901234567890123456789012');
+      final iv = IV.fromUtf8('1234567890123456');
       final encrypter = Encrypter(AES(key));
-      final encrypted = encrypter.encrypt(text, iv: iv);
+      encrypted = encrypter.encrypt(text, iv: iv);
+    } catch(e) {
+        print("Send msg error : $e");
+        debugPrint("Send msg error : $e");
+
+    }
+
+      debugPrint("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+      debugPrint("Text : $text   encrypted : ${encrypted?.base64}");
+      debugPrint("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");    
 
       // --- Save message ---
       final messageData = {
         'senderEmail': senderEmail,
-        'text': encrypted.base64,
+        'text': encrypted?.base64,
         'type': type,
         'createdAt': FieldValue.serverTimestamp(),
       };
@@ -92,7 +92,7 @@ class ChatService {
 
       // Update last message
       await chatRef.update({
-        'lastMessage': encrypted.base64,
+        'lastMessage': encrypted?.base64,
         'lastMessageAt': FieldValue.serverTimestamp(),
         'lastMessageBy': senderEmail,
       });
@@ -139,6 +139,60 @@ class ChatService {
         .orderBy('createdAt', descending: false)
         .snapshots();
   }
+
+  Stream<QuerySnapshot> getMessagesWithDebug({
+  required String email1,
+  required String email2,
+}) {
+  final chatId = getChatId(email1, email2);
+  final chatRef = _firestore.collection('chats').doc(chatId);
+  final key = Key.fromUtf8('12345678901234567890123456789012');
+  final iv = IV.fromUtf8('1234567890123456');
+
+  // Get chat key
+  chatRef.get().then((chatSnapshot) {
+    final encrypter = Encrypter(AES(key));
+
+    // Listen to the messages stream for debug printing
+    _firestore
+        .collection('chats')
+        .doc(chatId)
+        .collection('messages')
+        .orderBy('createdAt', descending: false)
+        .snapshots()
+        .listen((snapshot) {
+        print('------------------------------- Full Decrypted Chat -----------------------------------');
+        for (var doc in snapshot.docs) {
+          final data = doc.data() as Map<String, dynamic>;
+          final encryptedText = data['text'] as String;
+              try {
+
+          final decryptedText =
+              encrypter.decrypt(Encrypted(base64Decode(encryptedText)), iv: iv);
+            print('${data['senderEmail']}: $decryptedText');
+              } catch (e) {
+                print(' encryptedText : $encryptedText');
+                print(' encryptedText base64decode: ${base64Decode(encryptedText)}');
+
+                print('${data['senderEmail']}: [Could not decrypt message]');
+              }
+        }
+        print('---------------------------');
+
+    });
+  });
+
+  // Return original stream unchanged
+  return _firestore
+      .collection('chats')
+      .doc(chatId)
+      .collection('messages')
+      .orderBy('createdAt', descending: false)
+      .snapshots();
+}
+
+
+
 
   /// Optional: delete chat (if expired)
   Future<void> deleteChat(String email1, String email2) async {
