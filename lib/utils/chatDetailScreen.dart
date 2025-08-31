@@ -711,10 +711,22 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                       children: [
                         IconButton(
                           icon: const Icon(
-                            Icons.emoji_emotions_outlined,
-                            color: Colors.grey,
+                            Icons.image,
+                            color: Color.fromARGB(255, 0, 0, 0),
                           ),
-                          onPressed: () {},
+                          onPressed: () async {
+                            final pickedImage = await _imageService.pickImage();
+
+                            if (pickedImage != null) {
+                              setState(() {
+                                _pickedImage = pickedImage as XFile?;
+                              });
+                            } else {
+                              setState(() {
+                                _pickedImage = null;
+                              });
+                            }
+                          },
                         ),
                         Expanded(
                           child: Container(
@@ -741,7 +753,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                             padding: const EdgeInsets.all(12),
                             decoration: const BoxDecoration(
                               shape: BoxShape.circle,
-                              color: Color.fromARGB(255, 52, 52, 52),
+                              color: Color.fromARGB(255, 0, 0, 0),
                             ),
                             child: const Icon(Icons.send, color: Colors.white),
                           ),
@@ -752,7 +764,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                 ],
               ),
             ),
-       if (_pickedImage != null)
+          if (_pickedImage != null)
             Container(
               height: MediaQuery.of(context).size.height * 0.9,
               color: const Color.fromARGB(255, 255, 255, 255),
