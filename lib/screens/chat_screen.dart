@@ -1,9 +1,10 @@
-import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart' hide Key;
 import '../services/message_service.dart';
 import '../utils/chatDetailScreen.dart';
 import '../services/auth_service.dart';
 import 'dart:math';
+import 'package:encrypt/encrypt.dart';
+import 'dart:convert';
 
 class ChatScreen extends StatefulWidget {
   ChatScreen({super.key});
@@ -16,12 +17,17 @@ class _ChatScreenState extends State<ChatScreen> {
   final ChatService _messageService = ChatService();
   final AuthService _authService = AuthService();
   final Random random = Random();
+  final key = Key.fromUtf8('12345678901234567890123456789012');
+  final iv = IV.fromUtf8('1234567890123456');
+  late final Encrypter encrypter;
+
   String myMail = "";
   String profilePic = "";
   var userData = {};
   @override
   void initState() {
     super.initState();
+    encrypter = Encrypter(AES(key));
     _loadUserData();
   }
 
@@ -106,6 +112,19 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  String decrypter(String message) {
+    String decryptedText;
+    try {
+      decryptedText = encrypter.decrypt(
+        Encrypted(base64Decode(message)),
+        iv: iv,
+      );
+    } catch (e) {
+      decryptedText = '[Could not decrypt]';
+    }
+    return decryptedText;
+  }
+
   Widget chatItem(
     BuildContext context,
     String name,
@@ -174,14 +193,15 @@ class _ChatScreenState extends State<ChatScreen> {
             );
           },
         ),
+
         subtitle: Text(
           message.isEmpty
               ? "No messages yet"
               : (lastMessageBy == currentUserEmail
-                  ? "You: ${message.startsWith('https://res.cloudinary.com/') ? 'Image' : message}"
-                  : message.startsWith('https://res.cloudinary.com/')
+                  ? "You: ${decrypter(message).startsWith('https://res.cloudinary.com/') ? 'Image' : decrypter(message)}"
+                  : decrypter(message).startsWith('https://res.cloudinary.com/')
                   ? 'Image'
-                  : message),
+                  : decrypter(message)),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
