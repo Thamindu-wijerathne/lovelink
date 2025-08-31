@@ -2,6 +2,11 @@ import 'dart:ffi';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'auth_service.dart';
+import 'package:encrypt/encrypt.dart';
+import 'dart:math';
+import 'dart:typed_data';
+import 'dart:convert';
+
 
 class ChatService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -16,6 +21,16 @@ class ChatService {
     return email.replaceAll('.', '_');
   }
 
+  Uint8List generateSecureRandomBytes(int length) {
+    final secureRandom = Random.secure();
+    final bytes = Uint8List(length);
+    for (int i = 0; i < length; i++) {
+      bytes[i] = secureRandom.nextInt(256);
+    }
+    return bytes;
+  }
+
+
   //creating a conn
   Future<void> createChatIfNotExists({
     required String email1,
@@ -25,11 +40,15 @@ class ChatService {
     final chatId = getChatId(email1, email2);
     final docRef = _firestore.collection('chats').doc(chatId);
 
+  final keyBytes = generateSecureRandomBytes(32); // 32 bytes for AES-256
+  final keyBase64 = base64Encode(keyBytes);
+
     final doc = await docRef.get();
     if (!doc.exists) {
       await docRef.set({
         'participants': [email1, email2],
         'lastMessage': '',
+        'chatKey': keyBase64, // securely store the key
         'lastMessageAt': FieldValue.serverTimestamp(),
         'validTill': Timestamp.fromDate(
           DateTime.now().add(Duration(hours: validHours)),
@@ -45,32 +64,38 @@ class ChatService {
     String type = 'text', // default text
   }) async {
     final chatId = getChatId(senderEmail, receiverEmail);
+      final chatRef = _firestore.collection('chats').doc(chatId);
+      final chatSnapshot = await chatRef.get();
 
-    // Message data
-    final messageData = {
-      'senderEmail': senderEmail,
-      'text': text,
-      'type': type,
-      'createdAt': FieldValue.serverTimestamp(),
-    };
+      if (!chatSnapshot.exists) return;
 
-    // References
-    final messagesRef = _firestore
-        .collection('chats')
-        .doc(chatId)
-        .collection('messages');
+      // --- Get saved key ---
+      final chatKeyBase64 = chatSnapshot.data()!['chatKey'] as String;
+      final key = Key(base64Decode(chatKeyBase64));
 
-    final chatRef = _firestore.collection('chats').doc(chatId);
+      // --- Use a fixed IV (simplest) ---
+      final iv = IV.fromLength(16); // all zeros, same for all messages
 
-    // Add the message
-    await messagesRef.add(messageData);
+      // --- Encrypt ---
+      final encrypter = Encrypter(AES(key));
+      final encrypted = encrypter.encrypt(text, iv: iv);
 
-    // Update last message info
-    await chatRef.update({
-      'lastMessage': text,
-      'lastMessageAt': FieldValue.serverTimestamp(),
-      'lastMessageBy': senderEmail,
-    });
+      // --- Save message ---
+      final messageData = {
+        'senderEmail': senderEmail,
+        'text': encrypted.base64,
+        'type': type,
+        'createdAt': FieldValue.serverTimestamp(),
+      };
+
+      await chatRef.collection('messages').add(messageData);
+
+      // Update last message
+      await chatRef.update({
+        'lastMessage': encrypted.base64,
+        'lastMessageAt': FieldValue.serverTimestamp(),
+        'lastMessageBy': senderEmail,
+      });
 
     // --- Unread count handling ---
     final receiverId = await _authService.getUserIdByEmail(receiverEmail);
