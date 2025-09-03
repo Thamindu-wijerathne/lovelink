@@ -33,39 +33,50 @@ class ChatService {
     return bytes;
   }
 
+  List<Content> _chatHistory = []; // keep conversation history
+
+
   Future<String> getGeminiResponse(String userMessage) async {
     try {
-      final value = await Gemini.instance.prompt(parts: [
-        Part.text("Your are personal assistant of this user. this is app called lovelink. what you have to do is help user to make his crush to fall in love. only response related to that if other topic asked then say 'I dont have Access to that'  this is user quection : ${userMessage}"),
-      ]);
+      // Add system instructions once at the beginning (optional)
+      if (_chatHistory.isEmpty) {
+        _chatHistory.add(Content(
+          parts: [
+            Part.text(
+              "You are a personal assistant for LoveLink app. "
+              "Help the user make his crush fall in love. "
+              "If asked about other topics, reply 'I don't have access to that.'"
+            )
+          ],
+          role: 'model', // system instructions
+        ));
+      }
+
+            // Add the user message to history
+      _chatHistory.add(Content(
+        parts: [
+          Part.text(
+            "User: ${userMessage}"
+          )
+        ],
+        role: 'user',
+      ));
+
+      // Call Gemini chat with the full history
+      final value = await Gemini.instance.chat(_chatHistory);
 
       final aiReply = value?.output ?? "Sorry, I couldn't respond.";
+
+      // Add AI response to history for next turn
+      _chatHistory.add(Content(
+        parts: [
+          Part.text(aiReply)
+        ],
+        role: 'model',
+      ));
+
       print(aiReply);
       return aiReply;
-    
-
-      // final response = await http.post(
-      //   Uri.parse(GEMINI_API_URL),
-      //   headers: {
-      //     "Content-Type": "application/json",
-      //     "Authorization": "Bearer $GEMINI_API_KEY",
-      //   },
-      //   body: jsonEncode({
-      //     "model": "gemini-1.5",   // or whichever model you want
-      //     "input": userMessage,
-      //   }),
-      // );
-
-      // if (response.statusCode == 200) {
-      //   final data = jsonDecode(response.body);
-      //   // Depending on API response structure, extract text
-      //   final String aiReply = data['output_text'] ?? "Sorry, I couldn't respond.";
-      //   return aiReply;
-      // } else {
-      //   print("Gemini API Error: ${response.statusCode} ${response.body}");
-      //   return "Sorry, I couldn't respond.";
-      // }
-
 
     } catch (e) {
       print("Gemini API Exception: $e");
