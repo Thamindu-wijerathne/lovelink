@@ -46,6 +46,7 @@ class _SignupScreenState extends State<SignupScreen> {
         password: passwordController.text.trim(),
         userModel: UserModel(
           uid: '',
+          isOnline: true,
           name: nameController.text.trim(),
           email: emailController.text.trim().toLowerCase(),
           phone: phoneController.text.trim(),

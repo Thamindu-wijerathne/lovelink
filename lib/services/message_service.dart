@@ -343,6 +343,24 @@ class ChatService {
 
     await chatRef.update({'requestExtend': 0});
   }
+
+  Future<bool?> getOnlineStatus({required String email}) async {
+    QuerySnapshot snapshot = await _firestore
+        .collection("users")
+        .where("email", isEqualTo: email)
+        .get();
+
+    if (snapshot.docs.isNotEmpty) {
+      Map<String, dynamic> data = snapshot.docs.first.data() as Map<String, dynamic>;
+      bool isOnline = data['isOnline'] ?? false;
+      print("User $email isOnline: $isOnline");
+      return data['isOnline']; 
+    } else {
+      print("User not found");
+      return null;
+    }
+  }
+
 }
 
 

@@ -1,9 +1,11 @@
+
 class UserModel {
   final String uid;
   final String name;
   final String email;
   final String phone;
   final String address;
+  final bool isOnline;
   final Map<String, dynamic> preferences;
 
   UserModel({
@@ -13,6 +15,7 @@ class UserModel {
     required this.phone,
     required this.address,
     required this.preferences,
+    required this.isOnline
   });
 
   // Convert UserModel to Map for Firestore
@@ -24,6 +27,7 @@ class UserModel {
       'phone': phone,
       'address': address,
       'preferences': preferences,
+      'isOnline': isOnline
     };
   }
 
@@ -35,6 +39,7 @@ class UserModel {
       email: map['email'] ?? '',
       phone: map['phone'] ?? '',
       address: map['address'] ?? '',
+      isOnline: map['isOnline'] ?? '',
       preferences: Map<String, dynamic>.from(map['preferences'] ?? {}),
     );
   }

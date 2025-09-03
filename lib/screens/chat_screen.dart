@@ -65,7 +65,10 @@ class _ChatScreenState extends State<ChatScreen> {
         ],
       ),
 
-      body: StreamBuilder<List<Map<String, dynamic>>>(
+      body: 
+      Stack(
+        children: [
+      StreamBuilder<List<Map<String, dynamic>>>(
         stream: _messageService.getUserChats(currentUserEmail),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -109,8 +112,44 @@ class _ChatScreenState extends State<ChatScreen> {
           );
         },
       ),
-    );
-  }
+
+        // --- AI Chatbot Button ---
+        Positioned(
+          bottom: 16,
+          right: 16,
+          child: GestureDetector(
+            onTap: () {
+              // Open your AI chatbot screen or modal
+              print("AI Chatbot clicked!");
+            },
+            child: Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                color: Colors.blueAccent,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black26,
+                    blurRadius: 4,
+                    offset: Offset(2, 2),
+                  ),
+                ],
+              ),
+              child: Center(
+                child: Image.asset(
+                  'assets/images/ai_bot.png', // your AI bot icon
+                  width: 35,
+                  height: 35,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
 
   String decrypter(String message) {
     String decryptedText;
