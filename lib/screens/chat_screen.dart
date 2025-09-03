@@ -120,7 +120,14 @@ class _ChatScreenState extends State<ChatScreen> {
           child: GestureDetector(
             onTap: () {
               // Open your AI chatbot screen or modal
-              print("AI Chatbot clicked!");
+              Navigator.push(
+                context, 
+                MaterialPageRoute(
+                  builder: (_) => ChatDetailScreen(
+                    userEmail: currentUserEmail, 
+                    chatPartnerEmail: 'LoveLink AI')
+                )
+              );
             },
             child: Container(
               width: 60,

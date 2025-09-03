@@ -1,5 +1,4 @@
 import 'dart:ffi';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'auth_service.dart';
 import 'package:encrypt/encrypt.dart';
@@ -7,6 +6,9 @@ import 'dart:math';
 import 'dart:typed_data';
 import 'dart:convert';
 import 'package:flutter/foundation.dart' hide Key;
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:flutter_gemini/flutter_gemini.dart';
 
 
 class ChatService {
@@ -29,6 +31,46 @@ class ChatService {
       bytes[i] = secureRandom.nextInt(256);
     }
     return bytes;
+  }
+
+  Future<String> getGeminiResponse(String userMessage) async {
+    try {
+      final value = await Gemini.instance.prompt(parts: [
+        Part.text("Your are personal assistant of this user. this is app called lovelink. what you have to do is help user to make his crush to fall in love. only response related to that if other topic asked then say 'I dont have Access to that'  this is user quection : ${userMessage}"),
+      ]);
+
+      final aiReply = value?.output ?? "Sorry, I couldn't respond.";
+      print(aiReply);
+      return aiReply;
+    
+
+      // final response = await http.post(
+      //   Uri.parse(GEMINI_API_URL),
+      //   headers: {
+      //     "Content-Type": "application/json",
+      //     "Authorization": "Bearer $GEMINI_API_KEY",
+      //   },
+      //   body: jsonEncode({
+      //     "model": "gemini-1.5",   // or whichever model you want
+      //     "input": userMessage,
+      //   }),
+      // );
+
+      // if (response.statusCode == 200) {
+      //   final data = jsonDecode(response.body);
+      //   // Depending on API response structure, extract text
+      //   final String aiReply = data['output_text'] ?? "Sorry, I couldn't respond.";
+      //   return aiReply;
+      // } else {
+      //   print("Gemini API Error: ${response.statusCode} ${response.body}");
+      //   return "Sorry, I couldn't respond.";
+      // }
+
+
+    } catch (e) {
+      print("Gemini API Exception: $e");
+      return "Sorry, something went wrong.";
+    }
   }
 
 
@@ -62,8 +104,8 @@ class ChatService {
     String type = 'text', // default text
   }) async {
     final chatId = getChatId(senderEmail, receiverEmail);
-      final chatRef = _firestore.collection('chats').doc(chatId);
-      Encrypted? encrypted;
+    final chatRef = _firestore.collection('chats').doc(chatId);
+    Encrypted? encrypted;
 
     try {
       final key = Key.fromUtf8('12345678901234567890123456789012');
@@ -122,6 +164,36 @@ class ChatService {
           }
           await chatRef.update({'unreadCount.$receiverKey': currentUnread + 1});
         }
+      }
+    }
+
+    // --- If receiver is LoveLink AI, get Gemini response ---
+    const aiEmail = "LoveLink AI";
+    if (receiverEmail == aiEmail) {
+      final aiResponse = await getGeminiResponse(text); // call Gemini API
+
+      try {
+        final key = Key.fromUtf8('12345678901234567890123456789012');
+        final iv = IV.fromUtf8('1234567890123456');
+        final encrypter = Encrypter(AES(key));
+        final encryptedAI = encrypter.encrypt(aiResponse, iv: iv);
+
+        final aiMessageData = {
+          'senderEmail': aiEmail,
+          'text': encryptedAI.base64,
+          'type': 'text',
+          'createdAt': FieldValue.serverTimestamp(),
+        };
+
+        await chatRef.collection('messages').add(aiMessageData);
+
+        await chatRef.update({
+          'lastMessage': encryptedAI.base64,
+          'lastMessageAt': FieldValue.serverTimestamp(),
+          'lastMessageBy': aiEmail,
+        });
+      } catch (e) {
+        debugPrint("AI message encryption failed: $e");
       }
     }
   }

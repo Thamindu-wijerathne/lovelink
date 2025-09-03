@@ -3,8 +3,12 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'app.dart';
+import 'package:flutter_gemini/flutter_gemini.dart';
+
+const apiKey = "AIzaSyCZkB56BNCwp2otIC-d02lputCkHfpOQo8";
 
 void main() async {
+  Gemini.init(apiKey: apiKey);
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
   runApp(const MyAppWrapper());
