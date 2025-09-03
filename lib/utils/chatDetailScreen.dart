@@ -176,7 +176,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       setState(() {
         chatName = userName;
       });
-    }
+    } else {
+      setState(() {
+        chatName = "LoveLink AI";
+      });
+    } 
   }
 
   void _getUserProfilePic(String email) async {
@@ -443,16 +447,22 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                               }
                               return false;
                             }),
-                            builder: (context, snapshot) {
-                              bool isOnline = snapshot.data ?? false;
-                              return Text(
-                                isOnline ? "Online" : "Offline",
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: isOnline ? Colors.green : Colors.grey,
-                                ),
-                              );
-                            },
+                              builder: (context, snapshot) {
+                                bool isOnline = snapshot.data ?? false;
+
+                                // If chatName is "LoveLink AI", force it to online
+                                if (chatName == "LoveLink AI") {
+                                  isOnline = true;
+                                }
+
+                                return Text(
+                                  isOnline ? "Online" : "Offline",
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: isOnline ? Colors.green : Colors.grey,
+                                  ),
+                                );
+                              },
                           ),
                         ],
                       ),
