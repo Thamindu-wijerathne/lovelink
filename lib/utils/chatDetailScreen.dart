@@ -114,8 +114,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     }
   }
 
-
-
   // NEW: load extension request
   Future<void> loadExtendRequest() async {
     final request = await _chatService.getExtendRequest(
@@ -180,7 +178,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       setState(() {
         chatName = "LoveLink AI";
       });
-    } 
+    }
   }
 
   void _getUserProfilePic(String email) async {
@@ -204,17 +202,17 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   }
 
   Stream<bool> _onlineStatusStream(String email) {
-      return FirebaseFirestore.instance
-          .collection('users')
-          .where('email', isEqualTo: email)
-          .snapshots()
-          .map((snapshot) {
-        if (snapshot.docs.isNotEmpty) {
-          return snapshot.docs.first.data()['isOnline'] ?? false;
-        }
-        return false;
-      });
-    }
+    return FirebaseFirestore.instance
+        .collection('users')
+        .where('email', isEqualTo: email)
+        .snapshots()
+        .map((snapshot) {
+          if (snapshot.docs.isNotEmpty) {
+            return snapshot.docs.first.data()['isOnline'] ?? false;
+          }
+          return false;
+        });
+  }
 
   // Extend Chat Popup
   void extendChat() {
@@ -355,8 +353,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     }
   }
 
-
-
   void viewFullImage(String imageUrl, {bool isImage = true}) {
     Navigator.push(
       context,
@@ -402,10 +398,13 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             },
             child: Row(
               children: [
-                chatProfilePic != ""
+                chatProfilePic != "" || widget.chatPartnerEmail == 'LoveLink AI'
                     ? CircleAvatar(
                       radius: 20,
-                      backgroundImage: NetworkImage(chatProfilePic),
+                      backgroundImage:
+                          widget.chatPartnerEmail == "LoveLink AI"
+                              ? AssetImage('assets/images/ai_bot_white.png')
+                              : NetworkImage(chatProfilePic),
                     )
                     : (Container(
                       decoration: BoxDecoration(
@@ -424,103 +423,106 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                         ),
                       ),
                     )),
-                    Padding(
-                      padding: const EdgeInsets.only(left: 8.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            chatName,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          StreamBuilder<bool>(
-                            stream: FirebaseFirestore.instance
-                                .collection('users')
-                                .where('email', isEqualTo: widget.chatPartnerEmail)
-                                .snapshots()
-                                .map((snapshot) {
+                Padding(
+                  padding: const EdgeInsets.only(left: 8.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        chatName,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 2),
+                      StreamBuilder<bool>(
+                        stream: FirebaseFirestore.instance
+                            .collection('users')
+                            .where('email', isEqualTo: widget.chatPartnerEmail)
+                            .snapshots()
+                            .map((snapshot) {
                               if (snapshot.docs.isNotEmpty) {
-                                return snapshot.docs.first.data()['isOnline'] ?? false;
+                                return snapshot.docs.first.data()['isOnline'] ??
+                                    false;
                               }
                               return false;
                             }),
-                              builder: (context, snapshot) {
-                                bool isOnline = snapshot.data ?? false;
+                        builder: (context, snapshot) {
+                          bool isOnline = snapshot.data ?? false;
 
-                                // If chatName is "LoveLink AI", force it to online
-                                if (chatName == "LoveLink AI") {
-                                  isOnline = true;
-                                }
+                          // If chatName is "LoveLink AI", force it to online
+                          if (chatName == "LoveLink AI") {
+                            isOnline = true;
+                          }
 
-                                return Text(
-                                  isOnline ? "Online" : "Offline",
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: isOnline ? Colors.green : Colors.grey,
-                                  ),
-                                );
-                              },
-                          ),
-                        ],
+                          return Text(
+                            isOnline ? "Online" : "Offline",
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isOnline ? Colors.green : Colors.grey,
+                            ),
+                          );
+                        },
                       ),
-                    ),
-
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
         ),
         actions: [
-          GestureDetector(
-            onTap: () {},
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              margin: const EdgeInsets.only(right: 12),
-              decoration: BoxDecoration(
-                border: Border.all(
-                  color:
-                      remaining.inMinutes < 60
-                          ? Colors.red
-                          : remaining.inMinutes < 180
-                          ? Colors.amber
-                          : Colors.green,
-                ),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.access_time,
-                    color:
-                        remaining.inMinutes < 60
-                            ? Colors.red
-                            : remaining.inMinutes < 180
-                            ? Colors.amber
-                            : Colors.green,
-                    size: 18,
+          widget.chatPartnerEmail != 'LoveLink AI'
+              ? GestureDetector(
+                onTap: () {},
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
                   ),
-                  const SizedBox(width: 4),
-                  Text(
-                    remaining.inSeconds <= 10
-                        ? 'Chat Expired'
-                        : _formatDuration(remaining),
-                    style: TextStyle(
+                  margin: const EdgeInsets.only(right: 12),
+                  decoration: BoxDecoration(
+                    border: Border.all(
                       color:
                           remaining.inMinutes < 60
                               ? Colors.red
                               : remaining.inMinutes < 180
                               ? Colors.amber
                               : Colors.green,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
                     ),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                ],
-              ),
-            ),
-          ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.access_time,
+                        color:
+                            remaining.inMinutes < 60
+                                ? Colors.red
+                                : remaining.inMinutes < 180
+                                ? Colors.amber
+                                : Colors.green,
+                        size: 18,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        remaining.inSeconds <= 10
+                            ? 'Chat Expired'
+                            : _formatDuration(remaining),
+                        style: TextStyle(
+                          color:
+                              remaining.inMinutes < 60
+                                  ? Colors.red
+                                  : remaining.inMinutes < 180
+                                  ? Colors.amber
+                                  : Colors.green,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+              : Container(),
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert),
             onSelected: (value) {

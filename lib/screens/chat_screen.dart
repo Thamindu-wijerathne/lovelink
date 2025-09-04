@@ -78,98 +78,99 @@ class _ChatScreenState extends State<ChatScreen> {
         ],
       ),
 
-      body: 
-      Stack(
+      body: Stack(
         children: [
-      StreamBuilder<List<Map<String, dynamic>>>(
-        stream: _messageService.getUserChats(currentUserEmail),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          }
+          StreamBuilder<List<Map<String, dynamic>>>(
+            stream: _messageService.getUserChats(currentUserEmail),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (snapshot.hasError) {
+                return Center(child: Text('Error: ${snapshot.error}'));
+              }
 
-          final chats = snapshot.data ?? [];
-          print(chats);
+              final chats = snapshot.data ?? [];
+              print(chats);
 
-          if (chats.isEmpty) {
-            return const Center(child: Text('No chats yet'));
-          }
+              if (chats.isEmpty) {
+                return const Center(child: Text('No chats yet'));
+              }
 
-          return ListView.builder(
-            itemCount: chats.length,
-            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
-            itemBuilder: (context, index) {
-              final chat = chats[index];
-              final unreadName = _messageService.sanitizeEmailForKey(
-                currentUserEmail,
-              );
-              // print('Unread Name: $unreadName');
-              // print(chat['unreadCount']);
-              return chatItem(
-                context,
-                chat['chatPartner'] ?? "Unknown",
-                chat['lastMessage'] ?? "",
-                _formatTime(chat['lastMessageTime']),
-                chat['chatId'],
-                currentUserEmail,
-                chat['unreadCount'] != null &&
-                        chat['unreadCount'][unreadName] != null
-                    ? chat['unreadCount'][unreadName]
-                    : 0,
-                chat['lastMessageBy'] ?? "",
-              );
-            },
-          );
-        },
-      ),
-
-        // --- AI Chatbot Button ---
-        Positioned(
-          bottom: 16,
-          right: 16,
-          child: GestureDetector(
-            onTap: () {
-              // Open your AI chatbot screen or modal
-              Navigator.push(
-                context, 
-                MaterialPageRoute(
-                  builder: (_) => ChatDetailScreen(
-                    userEmail: currentUserEmail, 
-                    chatPartnerEmail: 'LoveLink AI')
-                )
+              return ListView.builder(
+                itemCount: chats.length,
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+                itemBuilder: (context, index) {
+                  final chat = chats[index];
+                  final unreadName = _messageService.sanitizeEmailForKey(
+                    currentUserEmail,
+                  );
+                  // print('Unread Name: $unreadName');
+                  // print(chat['unreadCount']);
+                  return chatItem(
+                    context,
+                    chat['chatPartner'] ?? "Unknown",
+                    chat['lastMessage'] ?? "",
+                    _formatTime(chat['lastMessageTime']),
+                    chat['chatId'],
+                    currentUserEmail,
+                    chat['unreadCount'] != null &&
+                            chat['unreadCount'][unreadName] != null
+                        ? chat['unreadCount'][unreadName]
+                        : 0,
+                    chat['lastMessageBy'] ?? "",
+                  );
+                },
               );
             },
-            child: Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                color: Colors.blueAccent,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black26,
-                    blurRadius: 4,
-                    offset: Offset(2, 2),
+          ),
+
+          // --- AI Chatbot Button ---
+          Positioned(
+            bottom: 16,
+            right: 16,
+            child: GestureDetector(
+              onTap: () {
+                // Open your AI chatbot screen or modal
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder:
+                        (_) => ChatDetailScreen(
+                          userEmail: currentUserEmail,
+                          chatPartnerEmail: 'LoveLink AI',
+                        ),
                   ),
-                ],
-              ),
-              child: Center(
-                child: Image.asset(
-                  'assets/images/ai_bot.png', // your AI bot icon
-                  width: 35,
-                  height: 35,
+                );
+              },
+              child: Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  color: const Color.fromARGB(255, 248, 248, 248),
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color.fromARGB(92, 255, 153, 0),
+                      blurRadius: 4,
+                      offset: Offset(2, 2),
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: Image.asset(
+                    'assets/images/ai_bot.png', // your AI bot icon
+                    width: 45,
+                    height: 45,
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-      ],
-    ),
-  );
-}
+        ],
+      ),
+    );
+  }
 
   Widget chatItem(
     BuildContext context,
@@ -208,11 +209,14 @@ class _ChatScreenState extends State<ChatScreen> {
               backgroundImage:
                   (imageUrl != null && imageUrl.isNotEmpty)
                       ? NetworkImage(imageUrl)
+                      : (name == 'LoveLink AI')
+                      ? const AssetImage('assets/images/ai_bot_white.png')
                       : null,
               backgroundColor:
                   chatAvatarColors[random.nextInt(chatAvatarColors.length)],
               child:
-                  (imageUrl == null || imageUrl.isEmpty || imageUrl == "")
+                  ((imageUrl == null || imageUrl.isEmpty || imageUrl == "") &&
+                          name != 'LoveLink AI')
                       ? Text(
                         name.isNotEmpty ? name[0].toUpperCase() : "?",
                         style: const TextStyle(
@@ -235,7 +239,10 @@ class _ChatScreenState extends State<ChatScreen> {
             }
             return Text(
               snapshot.data ?? name,
-              style: const TextStyle(fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: name == 'LoveLink AI' ? Colors.orange : Colors.black,
+                fontWeight: FontWeight.bold,
+              ),
             );
           },
         ),
