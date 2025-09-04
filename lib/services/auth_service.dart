@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:lovelink/services/message_service.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import '../models/user_model.dart'; // your UserModel
 import 'chat_service.dart';
 
@@ -14,6 +15,7 @@ class AuthService {
         email: email,
         password: password,
       );
+      await saveFcmTokenForCurrentUser();
       return result.user;
     } catch (e) {
       throw Exception(e.toString());
@@ -39,6 +41,7 @@ class AuthService {
             .doc(user.uid)
             .set(userModel.toMap());
       }
+      await saveFcmTokenForCurrentUser();
       return user;
     } catch (e) {
       throw Exception(e.toString());
@@ -130,5 +133,37 @@ class AuthService {
       throw Exception(e.toString());
     }
     return null;
+  }
+
+  Future<void> saveFcmTokenForCurrentUser() async {
+    try {
+      NotificationSettings settings = await FirebaseMessaging.instance
+          .requestPermission(alert: true, badge: true, sound: true);
+
+      if (settings.authorizationStatus == AuthorizationStatus.denied) {
+        print('Notification permission denied');
+      }
+
+      final fcmToken = await FirebaseMessaging.instance.getToken();
+      print('FCM token: $fcmToken');
+
+      if (fcmToken == null) return;
+
+      final User? user = getCurrentUser();
+
+      await FirebaseFirestore.instance.collection('users').doc(user?.uid).set({
+        'fcmToken': fcmToken,
+      }, SetOptions(merge: true));
+
+      FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
+        print('FCM token refreshed: $newToken');
+        await FirebaseFirestore.instance.collection('users').doc(user?.uid).set(
+          {'fcmToken': newToken},
+          SetOptions(merge: true),
+        );
+      });
+    } catch (e) {
+      print('Error saving FCM token: $e');
+    }
   }
 }
