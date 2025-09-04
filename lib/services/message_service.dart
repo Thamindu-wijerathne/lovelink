@@ -1,5 +1,4 @@
 import 'dart:ffi';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'auth_service.dart';
 import 'package:encrypt/encrypt.dart';
@@ -7,6 +6,9 @@ import 'dart:math';
 import 'dart:typed_data';
 import 'dart:convert';
 import 'package:flutter/foundation.dart' hide Key;
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:flutter_gemini/flutter_gemini.dart';
 
 
 class ChatService {
@@ -29,6 +31,57 @@ class ChatService {
       bytes[i] = secureRandom.nextInt(256);
     }
     return bytes;
+  }
+
+  List<Content> _chatHistory = []; // keep conversation history
+
+
+  Future<String> getGeminiResponse(String userMessage) async {
+    try {
+      // Add system instructions once at the beginning (optional)
+      if (_chatHistory.isEmpty) {
+        _chatHistory.add(Content(
+          parts: [
+            Part.text(
+              "You are a personal assistant for LoveLink app. "
+              "Help the user make his crush fall in love. "
+              "If asked about other topics, reply 'I don't have access to that.'"
+            )
+          ],
+          role: 'model', // system instructions
+        ));
+      }
+
+            // Add the user message to history
+      _chatHistory.add(Content(
+        parts: [
+          Part.text(
+            "User: ${userMessage}"
+          )
+        ],
+        role: 'user',
+      ));
+
+      // Call Gemini chat with the full history
+      final value = await Gemini.instance.chat(_chatHistory);
+
+      final aiReply = value?.output ?? "Sorry, I couldn't respond.";
+
+      // Add AI response to history for next turn
+      _chatHistory.add(Content(
+        parts: [
+          Part.text(aiReply)
+        ],
+        role: 'model',
+      ));
+
+      print(aiReply);
+      return aiReply;
+
+    } catch (e) {
+      print("Gemini API Exception: $e");
+      return "Sorry, something went wrong.";
+    }
   }
 
 
@@ -62,8 +115,8 @@ class ChatService {
     String type = 'text', // default text
   }) async {
     final chatId = getChatId(senderEmail, receiverEmail);
-      final chatRef = _firestore.collection('chats').doc(chatId);
-      Encrypted? encrypted;
+    final chatRef = _firestore.collection('chats').doc(chatId);
+    Encrypted? encrypted;
 
     try {
       final key = Key.fromUtf8('12345678901234567890123456789012');
@@ -122,6 +175,36 @@ class ChatService {
           }
           await chatRef.update({'unreadCount.$receiverKey': currentUnread + 1});
         }
+      }
+    }
+
+    // --- If receiver is LoveLink AI, get Gemini response ---
+    const aiEmail = "LoveLink AI";
+    if (receiverEmail == aiEmail) {
+      final aiResponse = await getGeminiResponse(text); // call Gemini API
+
+      try {
+        final key = Key.fromUtf8('12345678901234567890123456789012');
+        final iv = IV.fromUtf8('1234567890123456');
+        final encrypter = Encrypter(AES(key));
+        final encryptedAI = encrypter.encrypt(aiResponse, iv: iv);
+
+        final aiMessageData = {
+          'senderEmail': aiEmail,
+          'text': encryptedAI.base64,
+          'type': 'text',
+          'createdAt': FieldValue.serverTimestamp(),
+        };
+
+        await chatRef.collection('messages').add(aiMessageData);
+
+        await chatRef.update({
+          'lastMessage': encryptedAI.base64,
+          'lastMessageAt': FieldValue.serverTimestamp(),
+          'lastMessageBy': aiEmail,
+        });
+      } catch (e) {
+        debugPrint("AI message encryption failed: $e");
       }
     }
   }
@@ -343,6 +426,24 @@ class ChatService {
 
     await chatRef.update({'requestExtend': 0});
   }
+
+  Future<bool?> getOnlineStatus({required String email}) async {
+    QuerySnapshot snapshot = await _firestore
+        .collection("users")
+        .where("email", isEqualTo: email)
+        .get();
+
+    if (snapshot.docs.isNotEmpty) {
+      Map<String, dynamic> data = snapshot.docs.first.data() as Map<String, dynamic>;
+      bool isOnline = data['isOnline'] ?? false;
+      print("User $email isOnline: $isOnline");
+      return data['isOnline']; 
+    } else {
+      print("User not found");
+      return null;
+    }
+  }
+
 }
 
 

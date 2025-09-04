@@ -114,6 +114,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     }
   }
 
+
+
   // NEW: load extension request
   Future<void> loadExtendRequest() async {
     final request = await _chatService.getExtendRequest(
@@ -174,7 +176,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       setState(() {
         chatName = userName;
       });
-    }
+    } else {
+      setState(() {
+        chatName = "LoveLink AI";
+      });
+    } 
   }
 
   void _getUserProfilePic(String email) async {
@@ -196,6 +202,19 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       );
     }
   }
+
+  Stream<bool> _onlineStatusStream(String email) {
+      return FirebaseFirestore.instance
+          .collection('users')
+          .where('email', isEqualTo: email)
+          .snapshots()
+          .map((snapshot) {
+        if (snapshot.docs.isNotEmpty) {
+          return snapshot.docs.first.data()['isOnline'] ?? false;
+        }
+        return false;
+      });
+    }
 
   // Extend Chat Popup
   void extendChat() {
@@ -336,6 +355,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     }
   }
 
+
+
   void viewFullImage(String imageUrl, {bool isImage = true}) {
     Navigator.push(
       context,
@@ -403,10 +424,50 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                         ),
                       ),
                     )),
-                Padding(
-                  padding: const EdgeInsets.only(left: 8.0),
-                  child: Text(chatName),
-                ),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 8.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            chatName,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          StreamBuilder<bool>(
+                            stream: FirebaseFirestore.instance
+                                .collection('users')
+                                .where('email', isEqualTo: widget.chatPartnerEmail)
+                                .snapshots()
+                                .map((snapshot) {
+                              if (snapshot.docs.isNotEmpty) {
+                                return snapshot.docs.first.data()['isOnline'] ?? false;
+                              }
+                              return false;
+                            }),
+                              builder: (context, snapshot) {
+                                bool isOnline = snapshot.data ?? false;
+
+                                // If chatName is "LoveLink AI", force it to online
+                                if (chatName == "LoveLink AI") {
+                                  isOnline = true;
+                                }
+
+                                return Text(
+                                  isOnline ? "Online" : "Offline",
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: isOnline ? Colors.green : Colors.grey,
+                                  ),
+                                );
+                              },
+                          ),
+                        ],
+                      ),
+                    ),
+
               ],
             ),
           ),
