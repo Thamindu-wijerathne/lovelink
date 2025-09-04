@@ -94,7 +94,28 @@ class _ChatScreenState extends State<ChatScreen> {
               print(chats);
 
               if (chats.isEmpty) {
-                return const Center(child: Text('No chats yet'));
+                return Center(
+                  child: Container(
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Icon(Icons.chat, size: 60, color: Colors.orange),
+                          SizedBox(height: 20),
+                          Text(
+                            'No chats yet.',
+                            style: TextStyle(
+                              fontSize: 20,
+                              color: Colors.orange,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
               }
 
               return ListView.builder(
