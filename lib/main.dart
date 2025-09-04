@@ -12,6 +12,7 @@ const apiKey = "AIzaSyCZkB56BNCwp2otIC-d02lputCkHfpOQo8";
 
 // Global navigator key
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+String? activeChatPartner;
 
 // Background handler for FCM
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -97,11 +98,126 @@ class _MyAppWrapperState extends State<MyAppWrapper>
 void _setupFCMListeners() {
   // Foreground messages
   FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-    print('🔥 Foreground message received');
-    print('Title: ${message.notification?.title}');
-    print('Body: ${message.notification?.body}');
-    print('Data: ${message.data}');
-    // TODO: show local notification with flutter_local_notifications
+    final title =
+        (message.notification?.title != null &&
+                message.notification!.title!.split(" ").length > 3)
+            ? message.notification!.title!.split(" ")[3]
+            : 'New message';
+
+    final body = message.notification?.body ?? '';
+    final profilePicUrl = message.data['image'] ?? '';
+
+    if (navigatorKey.currentState != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final overlay = navigatorKey.currentState!.overlay;
+        if (overlay == null || activeChatPartner == message.data['sender'])
+          return;
+
+        final context = overlay.context;
+        final topPadding = MediaQuery.of(context).padding.top;
+
+        late OverlayEntry overlayEntry;
+
+        overlayEntry = OverlayEntry(
+          builder:
+              (_) => Positioned(
+                top: topPadding + 8,
+                left: 8,
+                right: 8,
+                child: GestureDetector(
+                  onTap: () {
+                    _handleNotificationNavigation(message);
+                    overlayEntry.remove(); // remove on tap
+                  },
+                  child: Dismissible(
+                    key: UniqueKey(),
+                    direction: DismissDirection.startToEnd,
+                    onDismissed: (_) => overlayEntry.remove(),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white, // background white
+                          borderRadius: BorderRadius.circular(
+                            12,
+                          ), // rounded edges
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black26,
+                              blurRadius: 4,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            // Profile picture
+                            CircleAvatar(
+                              radius: 24,
+                              backgroundImage:
+                                  profilePicUrl.isNotEmpty
+                                      ? NetworkImage(profilePicUrl)
+                                      : null,
+                              child:
+                                  profilePicUrl.isEmpty
+                                      ? Icon(Icons.person, color: Colors.white)
+                                      : null,
+                              backgroundColor: Colors.grey,
+                            ),
+                            SizedBox(width: 12),
+                            // Title + Body
+                            Expanded(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    title == 'undefined'
+                                        ? "LoveLink AI"
+                                        : title,
+                                    style: TextStyle(
+                                      color: Colors.black,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    body,
+                                    style: TextStyle(
+                                      color: Colors.black87,
+                                      fontSize: 14,
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+        );
+
+        overlay.insert(overlayEntry);
+
+        // Auto-remove after 5 seconds
+        Future.delayed(Duration(seconds: 5), () {
+          overlayEntry.remove();
+        });
+      });
+    }
   });
 
   // Notification tapped
@@ -130,10 +246,11 @@ void _handleNotificationNavigation(RemoteMessage message) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       navigatorKey.currentState?.push(
         MaterialPageRoute(
-          builder: (_) => ChatDetailScreen(
-            userEmail: receiver,
-            chatPartnerEmail: sender,
-          ),
+          builder:
+              (_) => ChatDetailScreen(
+                userEmail: receiver,
+                chatPartnerEmail: sender,
+              ),
         ),
       );
     });

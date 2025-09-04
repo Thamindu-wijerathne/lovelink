@@ -2,6 +2,7 @@ import 'package:flutter/material.dart' hide Key;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:lovelink/main.dart';
 import 'package:lovelink/services/image_service.dart';
 import '../services/message_service.dart';
 import '../services/auth_service.dart';
@@ -54,7 +55,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   @override
   void initState() {
     super.initState();
-
+    setState(() {
+      activeChatPartner = widget.chatPartnerEmail;
+    });
     // Ensure chat doc exists
     _chatService.createChatIfNotExists(
       email1: widget.userEmail,
@@ -137,6 +140,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
   @override
   void dispose() {
+    setState(() {
+      activeChatPartner = null;
+    });
     timer?.cancel();
     super.dispose();
     _authService.clearActiveChat();
@@ -145,7 +151,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   void _sendMessage() {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
-    if (!sendMessageEnabled) {
+    if (!sendMessageEnabled && widget.chatPartnerEmail != 'LoveLink AI') {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
